@@ -72,6 +72,7 @@ pnpm cz
 
 ```bash
 git add .
+git commit -m "merge: 合并远程仓库内容"
 
 pnpm run cz
 ```
@@ -79,3 +80,7 @@ pnpm run cz
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=gitboyzcf/uni-preset-vue3-vite&type=Timeline)](https://star-history.com/#gitboyzcf/uni-preset-vue3-vite&Timeline)
+
+```bash
+git push -f origin main
+```
