@@ -12,7 +12,14 @@
       "type": "home",
       "layout": "default",
       "style": {
-        "navigationBarTitleText": "uni-app"
+        "navigationBarTitleText": "论坛",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "titleNView": false,
+          "navigationBar": {
+            "type": "none"
+          }
+        }
       }
     },
     {
@@ -20,7 +27,8 @@
       "type": "page",
       "layout": "default",
       "style": {
-        "navigationBarTitleText": "互动"
+        "navigationBarTitleText": "互动",
+        "navigationStyle": "custom"
       }
     }
   ],
@@ -46,9 +54,15 @@
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "uni-app",
+    "navigationBarTitleText": "论坛",
     "navigationBarBackgroundColor": "#F8F8F8",
-    "backgroundColor": "#F8F8F8"
+    "backgroundColor": "#F8F8F8",
+    "app-plus": {
+      "titleNView": false,
+      "navigationBar": {
+        "type": "none"
+      }
+    }
   },
   "subPackages": []
 }
