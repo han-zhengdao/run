@@ -34,7 +34,14 @@
       :duration="300"
     >
       <swiper-item v-for="cat in categories" :key="cat.id">
-        <scroll-view scroll-y class="feed-list">
+        <scroll-view 
+          scroll-y 
+          class="feed-list"
+          @scrolltolower="loadMore(cat.id)"
+          :refresher-enabled="true"
+          :refresher-triggered="isRefreshing"
+          @refresherrefresh="onRefresh(cat.id)"
+        >
           <!-- 广告栏 -->
           <view class="ad-banner" v-if="adStatus[cat.id] && adList[cat.id]?.length">
             <view class="close-btn" @click="closeAd(cat.id)">
@@ -63,6 +70,12 @@
                 </view>
                 <view class="time">{{ item.time }}</view>
               </view>
+              <view
+                :class="['follow-btn', item.isFollowed ? 'followed' : '']"
+                @click="handleFollow(item)"
+              >
+                <text>{{ item.isFollowed ? '已关注' : '关注' }}</text>
+              </view>
             </view>
             <view class="feed-content">{{ item.content }}</view>
             <view v-if="item.images && item.images.length" class="feed-images">
@@ -76,8 +89,8 @@
               />
             </view>
             <view class="feed-footer">
-              <view class="footer-item">
-                <text class="i-carbon-thumbs-up text-32rpx mr-2" />
+              <view class="footer-item" @click="handleLike(item)">
+                <text :class="['i-carbon-thumbs-up text-32rpx mr-2', item.isLiked ? 'liked' : '']" />
                 <text>{{ item.likes }}</text>
               </view>
               <view class="footer-item">
@@ -127,7 +140,9 @@
       likes: 23,
       views: 120,
       comments: 5,
-      category: 2
+      category: 2,
+      isFollowed: false,
+      isLiked: false
     },
     {
       id: 2,
@@ -140,7 +155,8 @@
       likes: 12,
       views: 80,
       comments: 2,
-      category: 3
+      category: 3,
+      isFollowed: false
     },
     {
       id: 3,
@@ -153,7 +169,8 @@
       likes: 45,
       views: 300,
       comments: 18,
-      category: 4
+      category: 4,
+      isFollowed: false
     },
     {
       id: 4,
@@ -166,7 +183,8 @@
       likes: 10,
       views: 50,
       comments: 1,
-      category: 5
+      category: 5,
+      isFollowed: false
     }
     // ...可继续添加更多mock数据
   ])
@@ -234,6 +252,130 @@
       indicator: 'number',
       loop: true
     })
+  }
+
+  // 处理关注
+  const handleFollow = (item) => {
+    item.isFollowed = !item.isFollowed
+    // 这里可以添加实际的关注/取消关注逻辑
+    uni.showToast({
+      title: item.isFollowed ? '关注成功' : '已取消关注',
+      icon: 'none'
+    })
+  }
+
+  // 处理点赞
+  const handleLike = (item) => {
+    item.isLiked = !item.isLiked
+    item.likes += item.isLiked ? 1 : -1
+    uni.showToast({
+      title: item.isLiked ? '点赞成功' : '已取消点赞',
+      icon: 'none'
+    })
+  }
+
+  // 下拉刷新状态
+  const isRefreshing = ref(false)
+  // 是否正在加载
+  const isLoading = ref(false)
+  // 是否还有更多数据
+  const hasMore = ref(true)
+  // 当前页码
+  const page = ref(1)
+
+  // 模拟获取数据
+  const getMockData = (categoryId, pageNum) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const newData = [
+          {
+            id: Date.now(),
+            avatar: '/static/avatar1.jpg',
+            nickname: '用户' + (pageNum * 4 - 3),
+            level: Math.floor(Math.random() * 10) + 1,
+            time: '刚刚',
+            content: '这是第' + pageNum + '页的内容',
+            images: ['/static/demo1.jpg'],
+            likes: Math.floor(Math.random() * 100),
+            views: Math.floor(Math.random() * 1000),
+            comments: Math.floor(Math.random() * 50),
+            category: categoryId,
+            isFollowed: false,
+            isLiked: false
+          },
+          {
+            id: Date.now() + 1,
+            avatar: '/static/avatar2.jpg',
+            nickname: '用户' + (pageNum * 4 - 2),
+            level: Math.floor(Math.random() * 10) + 1,
+            time: '刚刚',
+            content: '这是第' + pageNum + '页的内容',
+            images: ['/static/demo1.jpg'],
+            likes: Math.floor(Math.random() * 100),
+            views: Math.floor(Math.random() * 1000),
+            comments: Math.floor(Math.random() * 50),
+            category: categoryId,
+            isFollowed: false,
+            isLiked: false
+          }
+        ]
+        resolve(newData)
+      }, 1000)
+    })
+  }
+
+  // 加载更多
+  const loadMore = async (categoryId) => {
+    if (isLoading.value || !hasMore.value) return
+    
+    isLoading.value = true
+    try {
+      const newData = await getMockData(categoryId, page.value + 1)
+      if (newData.length === 0) {
+        hasMore.value = false
+        uni.showToast({
+          title: '没有更多数据了',
+          icon: 'none'
+        })
+      } else {
+        page.value++
+        if (categoryId === 1) {
+          list.value.push(...newData)
+        } else {
+          list.value.push(...newData.filter(item => item.category === categoryId))
+        }
+      }
+    } catch (error) {
+      uni.showToast({
+        title: '加载失败',
+        icon: 'none'
+      })
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // 下拉刷新
+  const onRefresh = async (categoryId) => {
+    isRefreshing.value = true
+    page.value = 1
+    hasMore.value = true
+    
+    try {
+      const newData = await getMockData(categoryId, 1)
+      if (categoryId === 1) {
+        list.value = newData
+      } else {
+        list.value = newData.filter(item => item.category === categoryId)
+      }
+    } catch (error) {
+      uni.showToast({
+        title: '刷新失败',
+        icon: 'none'
+      })
+    } finally {
+      isRefreshing.value = false
+    }
   }
 </script>
 
@@ -413,6 +555,10 @@
           align-items: center;
           font-size: 26rpx;
           color: #888;
+          
+          .liked {
+            color: #1da1f2;
+          }
         }
       }
       .divider {
@@ -476,6 +622,20 @@
     .ad-image {
       width: 100%;
       height: 100%;
+    }
+  }
+
+  .follow-btn {
+    padding: 8rpx 24rpx;
+    background: #1da1f2;
+    color: #fff;
+    border-radius: 30rpx;
+    font-size: 24rpx;
+    margin-left: 20rpx;
+    
+    &.followed {
+      background: #f0f0f0;
+      color: #666;
     }
   }
 </style>
