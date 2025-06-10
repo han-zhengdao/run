@@ -23,12 +23,13 @@
       }
     },
     {
-      "path": "pages/interaction/interaction",
+      "path": "pages/user/user",
       "type": "page",
       "layout": "default",
       "style": {
-        "navigationBarTitleText": "互动",
-        "navigationStyle": "custom"
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom",
+        "navigationBarTextStyle": "white"
       }
     }
   ],
@@ -45,10 +46,10 @@
         "text": "首页"
       },
       {
-        "pagePath": "pages/interaction/interaction",
-        "iconPath": "static/images/interaction_i_no.png",
-        "selectedIconPath": "static/images/interaction_i_yes.png",
-        "text": "互动"
+        "pagePath": "pages/user/user",
+        "iconPath": "static/images/user_i_no.png",
+        "selectedIconPath": "static/images/user_i_yes.png",
+        "text": "我的"
       }
     ]
   },
@@ -64,5 +65,74 @@
       }
     }
   },
-  "subPackages": []
+  "subPackages": [
+    {
+      "root": "pages/userPackage",
+      "pages": [
+        {
+          "path": "follow",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "fans",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "likes",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "posts",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "myLikes",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "myComments",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "settings",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "feedback",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "about",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        }
+      ]
+    }
+  ]
 }

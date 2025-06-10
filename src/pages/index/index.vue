@@ -1,7 +1,7 @@
 <template>
   <!-- 内容区域 -->
   <view class="content-wrapper">
-    <!-- 横向滑动分类导航 -->
+  <!-- 横向滑动分类导航 -->
     <view class="category-bar">
       <view class="nav-header">
         <image class="nav-logo" src="/static/logo.jpg" mode="aspectFit"></image>
@@ -14,19 +14,19 @@
         :scroll-into-view="'category-' + activeCategory"
         scroll-with-animation
       >
-        <view
-          v-for="cat in categories"
-          :key="cat.id"
+    <view
+      v-for="cat in categories"
+      :key="cat.id"
           :id="'category-' + cat.id"
-          :class="['category-item', cat.id === activeCategory ? 'active' : '']"
+      :class="['category-item', cat.id === activeCategory ? 'active' : '']"
           @click="switchCategory(cat.id)"
-        >
-          {{ cat.name }}
-        </view>
-      </scroll-view>
+    >
+      {{ cat.name }}
+    </view>
+  </scroll-view>
     </view>
 
-    <!-- 内容区：推特/知乎风格 -->
+  <!-- 内容区：推特/知乎风格 -->
     <swiper
       class="feed-swiper"
       :current="getSwiperIndex(activeCategory)"
@@ -62,48 +62,48 @@
           </view>
 
           <view class="feed-item" v-for="item in getCategoryList(cat.id)" :key="item.id">
-            <view class="feed-header">
-              <image class="avatar" :src="item.avatar" />
-              <view class="user-info">
-                <view class="nickname">
-                  {{ item.nickname }}<text class="level"> Lv.{{ item.level }}</text>
-                </view>
-                <view class="time">{{ item.time }}</view>
-              </view>
+      <view class="feed-header">
+        <image class="avatar" :src="item.avatar" />
+        <view class="user-info">
+          <view class="nickname">
+            {{ item.nickname }}<text class="level"> Lv.{{ item.level }}</text>
+          </view>
+          <view class="time">{{ item.time }}</view>
+        </view>
               <view
                 :class="['follow-btn', item.isFollowed ? 'followed' : '']"
                 @click="handleFollow(item)"
               >
                 <text>{{ item.isFollowed ? '已关注' : '关注' }}</text>
               </view>
-            </view>
-            <view class="feed-content">{{ item.content }}</view>
-            <view v-if="item.images && item.images.length" class="feed-images">
-              <image
-                v-for="(img, idx) in item.images"
-                :key="idx"
-                :src="img"
-                class="feed-img"
-                mode="aspectFill"
+      </view>
+      <view class="feed-content">{{ item.content }}</view>
+      <view v-if="item.images && item.images.length" class="feed-images">
+        <image
+          v-for="(img, idx) in item.images"
+          :key="idx"
+          :src="img"
+          class="feed-img"
+          mode="aspectFill"
                 @click="previewImage(item.images, idx)"
-              />
-            </view>
-            <view class="feed-footer">
+        />
+      </view>
+      <view class="feed-footer">
               <view class="footer-item" @click="handleLike(item)">
-                <text :class="['i-carbon-thumbs-up text-32rpx mr-2', item.isLiked ? 'liked' : '']" />
-                <text>{{ item.likes }}</text>
-              </view>
-              <view class="footer-item">
+                <text :class="['i-carbon-favorite text-32rpx mr-2', item.isLiked ? 'liked' : '']" />
+          <text>{{ item.likes }}</text>
+        </view>
+        <view class="footer-item">
                 <text class="i-carbon-view text-32rpx mr-2" />
-                <text>{{ item.views }}</text>
-              </view>
-              <view class="footer-item">
+          <text>{{ item.views }}</text>
+        </view>
+        <view class="footer-item">
                 <text class="i-carbon-chat text-32rpx mr-2" />
-                <text>{{ item.comments }}</text>
-              </view>
-            </view>
-            <view class="divider"></view>
-          </view>
+          <text>{{ item.comments }}</text>
+        </view>
+      </view>
+      <view class="divider"></view>
+    </view>
         </scroll-view>
       </swiper-item>
     </swiper>
@@ -393,7 +393,7 @@
   .content-wrapper {
     position: relative;
     z-index: 1;
-  }
+    }
 
   .category-bar {
     width: 100vw;
@@ -462,15 +462,15 @@
         margin-right: 0;
       }
 
-      &::after {
-        content: '';
-        display: block;
-        margin: 0 auto;
-        margin-top: 8rpx;
+        &::after {
+          content: '';
+          display: block;
+          margin: 0 auto;
+          margin-top: 8rpx;
         width: 0;
-        height: 6rpx;
-        background: #1da1f2;
-        border-radius: 3rpx;
+          height: 6rpx;
+          background: #1da1f2;
+          border-radius: 3rpx;
         transition: all 0.3s ease;
         opacity: 0;
       }
