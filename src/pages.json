@@ -31,6 +31,13 @@
         "navigationStyle": "custom",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/post/post",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "tabBar": {
@@ -69,6 +76,13 @@
     {
       "root": "pages/userPackage",
       "pages": [
+        {
+          "path": "userProfile",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
         {
           "path": "follow",
           "style": {
@@ -127,6 +141,19 @@
         },
         {
           "path": "about",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "messages",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "postDetail",
           "style": {
             "navigationStyle": "custom",
             "navigationBarTextStyle": "white"

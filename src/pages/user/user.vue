@@ -19,6 +19,10 @@
               <view class="nickname">小明</view>
               <view class="user-level">Lv.3 普通会员</view>
             </view>
+            <view class="message-btn" @click="goToMessages">
+              <text class="i-carbon-notification text-40rpx" />
+              <view class="badge" v-if="hasNewMessage"></view>
+            </view>
           </view>
           <view class="user-stats">
             <view class="stat-item" @click="goToFollow">
@@ -83,6 +87,7 @@
 import { ref, onMounted } from 'vue'
 
 const statusBarHeight = ref(0)
+const hasNewMessage = ref(true)
 
 onMounted(() => {
   // 获取状态栏高度
@@ -141,6 +146,12 @@ const goToFeedback = () => {
 const goToAbout = () => {
   uni.navigateTo({
     url: '/pages/userPackage/about'
+  })
+}
+
+const goToMessages = () => {
+  uni.navigateTo({
+    url: '/pages/userPackage/messages'
   })
 }
 
@@ -212,6 +223,7 @@ const handleMenuClick = (type) => {
       display: flex;
       align-items: center;
       margin-bottom: 32rpx;
+      position: relative;
 
       .avatar {
         width: 120rpx;
@@ -221,6 +233,7 @@ const handleMenuClick = (type) => {
       }
 
       .info-content {
+        flex: 1;
         .nickname {
           font-size: 36rpx;
           font-weight: 500;
@@ -231,6 +244,27 @@ const handleMenuClick = (type) => {
         .user-level {
           font-size: 24rpx;
           color: #999;
+        }
+      }
+
+      .message-btn {
+        width: 80rpx;
+        height: 80rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        position: relative;
+        
+        .badge {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 16rpx;
+          height: 16rpx;
+          background: #ff4d4f;
+          border-radius: 50%;
+          border: 2rpx solid #fff;
         }
       }
     }
@@ -289,3 +323,4 @@ const handleMenuClick = (type) => {
     }
   }
 </style>
+ 

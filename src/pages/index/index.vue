@@ -62,51 +62,55 @@
           </view>
 
           <view class="feed-item" v-for="item in getCategoryList(cat.id)" :key="item.id">
-      <view class="feed-header">
-        <image class="avatar" :src="item.avatar" />
-        <view class="user-info">
-          <view class="nickname">
-            {{ item.nickname }}<text class="level"> Lv.{{ item.level }}</text>
-          </view>
-          <view class="time">{{ item.time }}</view>
-        </view>
+            <view class="feed-header">
+              <image class="avatar" :src="item.avatar" @click.stop="goToUserProfile(item)" />
+              <view class="user-info" @click.stop="goToUserProfile(item)">
+                <view class="nickname">
+                  {{ item.nickname }}<text class="level"> Lv.{{ item.level }}</text>
+                </view>
+                <view class="time">{{ item.time }}</view>
+              </view>
               <view
                 :class="['follow-btn', item.isFollowed ? 'followed' : '']"
-                @click="handleFollow(item)"
+                @click.stop="handleFollow(item)"
               >
                 <text>{{ item.isFollowed ? '已关注' : '关注' }}</text>
               </view>
-      </view>
-      <view class="feed-content">{{ item.content }}</view>
-      <view v-if="item.images && item.images.length" class="feed-images">
-        <image
-          v-for="(img, idx) in item.images"
-          :key="idx"
-          :src="img"
-          class="feed-img"
-          mode="aspectFill"
-                @click="previewImage(item.images, idx)"
-        />
-      </view>
-      <view class="feed-footer">
-              <view class="footer-item" @click="handleLike(item)">
+            </view>
+            <view class="feed-content" @click="goToPostDetail(item)">{{ item.content }}</view>
+            <view v-if="item.images && item.images.length" class="feed-images">
+              <image
+                v-for="(img, idx) in item.images"
+                :key="idx"
+                :src="img"
+                class="feed-img"
+                mode="aspectFill"
+                @click.stop="previewImage(item.images, idx)"
+              />
+            </view>
+            <view class="feed-footer">
+              <view class="footer-item" @click.stop="handleLike(item)">
                 <text :class="['i-carbon-favorite text-32rpx mr-2', item.isLiked ? 'liked' : '']" />
-          <text>{{ item.likes }}</text>
-        </view>
-        <view class="footer-item">
+                <text>{{ item.likes }}</text>
+              </view>
+              <view class="footer-item">
                 <text class="i-carbon-view text-32rpx mr-2" />
-          <text>{{ item.views }}</text>
-        </view>
-        <view class="footer-item">
+                <text>{{ item.views }}</text>
+              </view>
+              <view class="footer-item" @click="goToPostDetail(item)">
                 <text class="i-carbon-chat text-32rpx mr-2" />
-          <text>{{ item.comments }}</text>
-        </view>
-      </view>
-      <view class="divider"></view>
-    </view>
+                <text>{{ item.comments }}</text>
+              </view>
+            </view>
+            <view class="divider"></view>
+          </view>
         </scroll-view>
       </swiper-item>
     </swiper>
+  </view>
+  <!-- 悬浮发帖按钮 -->
+  <view class="publish-btn" @click="goToPost">
+    <text class="i-carbon-edit text-32rpx" />
   </view>
 </template>
 
@@ -377,6 +381,27 @@
       isRefreshing.value = false
     }
   }
+
+  // 跳转到发帖页面
+  const goToPost = () => {
+    uni.navigateTo({
+      url: '/pages/post/post'
+    })
+  }
+
+  // 跳转到用户主页
+  const goToUserProfile = (item) => {
+    uni.navigateTo({
+      url: `/pages/userPackage/userProfile?userId=${item.id}`
+    })
+  }
+
+  // 跳转到帖子详情
+  const goToPostDetail = (item) => {
+    uni.navigateTo({
+      url: `/pages/userPackage/postDetail?postId=${item.id}`
+    })
+  }
 </script>
 
 <style lang="scss">
@@ -636,6 +661,57 @@
     &.followed {
       background: #f0f0f0;
       color: #666;
+    }
+  }
+
+  .publish-btn {
+    position: fixed;
+    right: 32rpx;
+    bottom: 120rpx;
+    width: 120rpx;
+    height: 120rpx;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a548fd 0%, #2994ff 100%, #0000CD 50%);
+    box-shadow: 0 4rpx 16rpx rgba(30, 144, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 48rpx;
+    z-index: 100;
+    transition: all 0.3s ease;
+    
+    &:active {
+      transform: scale(0.95);
+      box-shadow: 0 2rpx 8rpx rgba(30, 144, 255, 0.2);
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: -4rpx;
+      left: -4rpx;
+      right: -4rpx;
+      bottom: -4rpx;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(138, 43, 226, 0.2) 0%, rgba(30, 144, 255, 0.2) 50%, rgba(0, 0, 205, 0.2) 100%);
+      z-index: -1;
+      animation: pulse 2s infinite;
+    }
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.4;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0.8;
     }
   }
 </style>
