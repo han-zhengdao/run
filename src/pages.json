@@ -38,6 +38,14 @@
         "navigationStyle": "custom",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/user/login",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "tabBar": {
