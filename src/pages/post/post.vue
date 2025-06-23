@@ -422,6 +422,7 @@ const handlePublish = () => {
     .category-list {
       max-height: 60vh;
       overflow-y: auto;
+      padding-bottom: 50px;
       
       .category-item {
         padding: 24rpx 0;
