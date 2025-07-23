@@ -14,10 +14,12 @@
         <!-- 用户信息卡片 -->
         <view class="user-card">
           <view class="user-info">
-            <image class="avatar" src="/static/logo.jpg" mode="aspectFill" />
+            <image class="avatar" :src="userInfo?.avatar || '/static/logo.jpg'" mode="aspectFill" />
             <view class="info-content">
-              <view class="nickname">小明</view>
-              <view class="user-level">Lv.3 普通会员</view>
+              <view class="nickname">{{ userInfo?.nickname || '未登录' }}</view>
+              <view class="user-level">
+                {{ userInfo?.levelName ? 'Lv. ' + userInfo.levelName : 'Lv.0 游客' }}
+              </view>
             </view>
             <view class="message-btn" @click="goToMessages">
               <text class="i-carbon-notification text-40rpx" />
@@ -85,14 +87,35 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { request } from '@/api/request'
 
 const statusBarHeight = ref(0)
 const hasNewMessage = ref(true)
+const userInfo = ref(null)
 
-onMounted(() => {
+onMounted(async () => {
+  console.log('onMounted 执行了')
   // 获取状态栏高度
   const systemInfo = uni.getSystemInfoSync()
   statusBarHeight.value = systemInfo.statusBarHeight
+
+  // 获取用户信息
+  try {
+    const res = await request({
+      url: '/my/userinfo',
+      method: 'GET'
+    })
+    console.log('接口原始返回', res)
+    userInfo.value = res.data?.data || res.data || {}
+    console.log('赋值后', userInfo.value)
+  } catch (error) {
+    console.log('catch error', error)
+    console.error('获取用户信息失败', error)
+    uni.showToast({
+      title: '获取用户信息失败',
+      icon: 'none'
+    })
+  }
 })
 
 const goToFollow = () => {

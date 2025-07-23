@@ -50,7 +50,7 @@ const handleLogout = () => {
         
         // 跳转到我的页面
         uni.reLaunch({
-          url: '/pages/user/user'
+          url: '/pages/login/login'
         })
       }
     }
