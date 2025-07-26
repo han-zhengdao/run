@@ -2,7 +2,10 @@ import axios from 'axios'
 import { createUniAppAxiosAdapter } from '@uni-helper/axios-adapter'
 import { httpLogError, requestError, throttleToLogin } from './utils'
 export function createService() {
-  const request = axios.create({ adapter: createUniAppAxiosAdapter() })
+  const request = axios.create({
+    adapter: createUniAppAxiosAdapter(),
+    baseURL: import.meta.env.VITE_APP_API_BASEURL
+  })
   request.interceptors.request.use(
     (request) => {
       return request

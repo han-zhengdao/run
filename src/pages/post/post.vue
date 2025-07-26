@@ -89,7 +89,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRequest } from '@/api'
+
+const { API_ARTICLE_GET_CATEGORIES, API_ARTICLE_ADD } = useRequest()
 
 const statusBarHeight = ref(0)
 const content = ref('')
@@ -98,19 +101,38 @@ const selectedCategory = ref(null)
 const showCategoryPopup = ref(false)
 
 // 分类数据
-const categories = [
-  { id: 1, name: '装修设计' },
-  { id: 2, name: '家具家电' },
-  { id: 3, name: '邻里互助' },
-  { id: 4, name: '二手闲置' },
-  { id: 5, name: '兴趣圈子' },
-  { id: 6, name: '农副产品' },
-  { id: 7, name: '其他' }
-]
+const categories = ref([])
 
-// 获取状态栏高度
-const systemInfo = uni.getSystemInfoSync()
-statusBarHeight.value = systemInfo.statusBarHeight
+// 获取分类列表
+const fetchCategories = async () => {
+  try {
+    const res = await API_ARTICLE_GET_CATEGORIES()
+    if (res.data.status === 0) {
+      categories.value = res.data.data
+    } else {
+      uni.showToast({
+        title: res.data.message || '获取分类失败',
+        icon: 'none'
+      })
+    }
+  } catch (error) {
+    console.error('获取分类失败:', error)
+    uni.showToast({
+      title: '获取分类失败',
+      icon: 'none'
+    })
+  }
+}
+
+// 组件挂载时初始化
+onMounted(async () => {
+  // 获取状态栏高度
+  const systemInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = systemInfo.statusBarHeight
+
+  // 获取分类列表
+  await fetchCategories()
+})
 
 // 返回上一页
 const goBack = () => {
@@ -149,7 +171,7 @@ const selectCategory = (category) => {
 }
 
 // 发布帖子
-const handlePublish = () => {
+const handlePublish = async () => {
   if (!content.value.trim()) {
     uni.showToast({
       title: '请输入内容',
@@ -166,21 +188,66 @@ const handlePublish = () => {
     return
   }
   
-  // TODO: 调用发布接口
-  uni.showLoading({
-    title: '发布中...'
-  })
-  
-  setTimeout(() => {
+  try {
+    uni.showLoading({
+      title: '发布中...'
+    })
+
+    // 上传图片
+    const uploadedImages = []
+    if (images.value.length > 0) {
+      for (const tempFilePath of images.value) {
+        try {
+          // 使用Promise方式调用uploadFile
+          const uploadRes = await uni.uploadFile({
+            url: import.meta.env.VITE_APP_API_BASEURL + '/my/upload',
+            image_url: tempFilePath,
+            name: 'file',
+            header: {
+              Authorization: uni.getStorageSync('token')
+            }
+          })
+          
+          const result = JSON.parse(uploadRes.data)
+          if (result.status === 0) {
+            uploadedImages.push(result.data.url)
+          } else {
+            throw new Error(result.message || '图片上传失败')
+          }
+        } catch (error) {
+          console.error('图片上传失败:', error)
+          throw new Error('图片上传失败')
+        }
+      }
+    }
+
+    // 发布文章
+    const res = await API_ARTICLE_ADD({
+      content: content.value,
+      cate_id: selectedCategory.value.id,  // 修改参数名为cate_id
+      image_url: uploadedImages
+    })
+
+    if (res.data.status === 0) {
+      uni.hideLoading()
+      uni.showToast({
+        title: '发布成功',
+        icon: 'success'
+      })
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 1500)
+    } else {
+      throw new Error(res.data.message || '发布失败')
+    }
+  } catch (error) {
+    console.error('发布失败:', error)
     uni.hideLoading()
     uni.showToast({
-      title: '发布成功',
-      icon: 'success'
+      title: error.message || '发布失败',
+      icon: 'none'
     })
-    setTimeout(() => {
-      uni.navigateBack()
-    }, 1500)
-  }, 1500)
+  }
 }
 </script>
 
@@ -441,4 +508,4 @@ const handlePublish = () => {
     }
   }
 }
-</style> 
+</style>

@@ -116,92 +116,90 @@
 
 <script setup>
   import { ref, computed, onMounted } from 'vue'
+  import { useRequest } from '@/api'
 
-  // mock 分类
-  const categories = ref([
-    { id: 1, name: '全部' },
-    { id: 2, name: '热门话题' },
-    { id: 3, name: '装修设计' },
-    { id: 4, name: '家具家电' },
-    { id: 5, name: '邻里互助' },
-    { id: 6, name: '二手闲置' },
-    { id: 7, name: '兴趣圈子' },
-    { id: 8, name: '农副产品' },
-    { id: 9, name: '其他' }
-  ])
-  const activeCategory = ref(1)
+  // 获取API
+  const { 
+    API_ARTICLE_GET_CATEGORIES, 
+    API_AD_GET_LIST, 
+    API_AD_RECORD_CLICK, 
+    API_POST_GET_LIST, 
+    API_POST_LIKE, 
+    API_POST_FOLLOW_USER 
+  } = useRequest()
 
-  // mock 内容数据
-  const list = ref([
-    {
-      id: 1,
-      avatar: '/static/avatar1.jpg',
-      nickname: '小明',
-      level: 5,
-      time: '2小时前',
-      content: '今天学习了Vue3，感觉很棒！',
-      images: ['/static/demo1.jpg'],
-      likes: 23,
-      views: 120,
-      comments: 5,
-      category: 2,
-      isFollowed: false,
-      isLiked: false
-    },
-    {
-      id: 2,
-      avatar: '/static/avatar2.jpg',
-      nickname: '小红',
-      level: 3,
-      time: '1小时前',
-      content: '谁能推荐一下好用的UI库？',
-      images: [],
-      likes: 12,
-      views: 80,
-      comments: 2,
-      category: 3,
-      isFollowed: false
-    },
-    {
-      id: 3,
-      avatar: '/static/avatar3.jpg',
-      nickname: '老王',
-      level: 7,
-      time: '刚刚',
-      content: '晒一下我的新电脑配置！',
-      images: ['/static/demo1.jpg', '/static/demo1.jpg'],
-      likes: 45,
-      views: 300,
-      comments: 18,
-      category: 4,
-      isFollowed: false
-    },
-    {
-      id: 4,
-      avatar: '/static/avatar4.jpg',
-      nickname: '小刚',
-      level: 1,
-      time: '刚刚',
-      content: '分享一下我的新手机！',
-      images: ['/static/demo1.jpg'],
-      likes: 10,
-      views: 50,
-      comments: 1,
-      category: 5,
-      isFollowed: false
+  // 分类数据
+  const categories = ref([])
+  const activeCategory = ref(0)
+
+  // 获取文章分类列表
+  const fetchCategories = async () => {
+    try {
+      const res = await API_ARTICLE_GET_CATEGORIES()
+      if (res.data.status === 0) {
+        // 直接使用后端返回的分类数据
+        categories.value = res.data.data
+        // 默认选中第一个分类
+        activeCategory.value = categories.value[0]?.id || 0
+        
+        // 初始化广告状态
+        initAdStatus()
+        
+        // 初始化并获取广告数据
+        await initAdList()
+        
+        // 获取文章列表数据
+        await onRefresh(activeCategory.value)
+        
+        // 显示加载成功提示
+        uni.showToast({
+          title: '数据加载成功',
+          icon: 'success'
+        })
+      } else {
+        uni.showToast({
+          title: res.data.message || '获取分类失败',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('获取分类失败:', error)
+      uni.showToast({
+        title: '获取分类失败',
+        icon: 'none'
+      })
     }
-    // ...可继续添加更多mock数据
-  ])
+  }
+
+  // 文章列表数据
+  const list = ref([])
 
   // 切换分类
-  const switchCategory = (categoryId) => {
+  const switchCategory = async (categoryId) => {
     activeCategory.value = categoryId
+    // 重置页码并重新加载数据
+    page.value = 1
+    hasMore.value = true
+    // 获取该分类的文章列表
+    const newData = await getPostList(categoryId, 1)
+    list.value = newData
   }
 
   // 处理滑动切换
-  const handleSwiperChange = (e) => {
+  const handleSwiperChange = async (e) => {
     const index = e.detail.current
-    activeCategory.value = categories.value[index].id
+    const categoryId = categories.value[index].id
+    
+    // 如果分类已经改变，则重新加载数据
+    if (activeCategory.value !== categoryId) {
+      activeCategory.value = categoryId
+      // 重置页码并重新加载数据
+      page.value = 1
+      hasMore.value = true
+      // 获取该分类的文章列表
+      const newData = await getPostList(categoryId, 1)
+      list.value = newData
+    }
   }
 
   // 获取swiper对应的索引
@@ -211,32 +209,55 @@
 
   // 获取对应分类的内容列表
   const getCategoryList = (categoryId) => {
-    if (categoryId === 1) return list.value
-    return list.value.filter((item) => item.category === categoryId)
+    return list.value
   }
 
   // 广告控制
   const adStatus = ref({
-    1: true, // 全部
-    2: true, // 热门话题
-    3: true, // 装修设计
-    4: true, // 家具家电
-    5: true, // 邻里互助
-    6: true, // 二手闲置
-    7: true, // 兴趣圈子
-    8: true, // 农副产品
-    9: true // 其他
+    0: true, // 全部
+    // 其他分类的广告状态将根据实际分类动态设置
   })
+  
+  // 当分类数据加载完成后，初始化每个分类的广告状态
+  const initAdStatus = () => {
+    categories.value.forEach(cat => {
+      if (adStatus.value[cat.id] === undefined) {
+        adStatus.value[cat.id] = true
+      }
+    })
+  }
 
   const adList = ref({
-    1: [
-      { id: 1, image: '/static/ad1.jpg', link: 'https://example.com/ad1' },
-      { id: 2, image: '/static/ad2.jpg', link: 'https://example.com/ad2' }
-    ],
-    2: [{ id: 3, image: '/static/ad1.jpg', link: 'https://example.com/ad3' }],
-    3: [{ id: 4, image: '/static/ad2.jpg', link: 'https://example.com/ad4' }]
-    // ... 其他分类的广告
+    // 广告数据将从服务器获取
   })
+  
+  // 获取广告数据
+  const fetchAdList = async (categoryId = 0) => {
+    try {
+      const res = await API_AD_GET_LIST(categoryId)
+      if (res.data.status === 0) {
+        // 更新指定分类的广告数据
+        adList.value[categoryId] = res.data.data
+      } else {
+        console.error('获取广告失败:', res.data.message)
+      }
+    } catch (error) {
+      console.error('获取广告失败:', error)
+    }
+  }
+  
+  // 初始化广告列表
+  const initAdList = async () => {
+    // 先获取全部分类的广告
+    await fetchAdList(0)
+    
+    // 然后获取每个分类的广告
+    for (const cat of categories.value) {
+      if (cat.id !== 0) { // 跳过"全部"分类，因为已经获取过了
+        await fetchAdList(cat.id)
+      }
+    }
+  }
 
   // 关闭广告
   const closeAd = (categoryId) => {
@@ -244,38 +265,131 @@
   }
 
   // 处理广告点击
-  const handleAdClick = (ad) => {
-    console.log('广告点击:', ad)
+  const handleAdClick = async (ad) => {
+    try {
+      // 记录广告点击
+      await API_AD_RECORD_CLICK(ad.id)
+      
+      // 如果有链接，则跳转
+      if (ad.link) {
+        // 根据链接类型决定跳转方式
+        if (ad.link.startsWith('http')) {
+          // 外部链接，使用web-view打开
+          uni.navigateTo({
+            url: `/pages/webview/webview?url=${encodeURIComponent(ad.link)}`
+          })
+        } else {
+          // 内部页面，直接跳转
+          uni.navigateTo({
+            url: ad.link
+          })
+        }
+      }
+    } catch (error) {
+      console.error('记录广告点击失败:', error)
+    }
   }
 
   // 预览图片
   const previewImage = (urls, current) => {
+    // 确保urls是一个数组
+    const imageUrls = Array.isArray(urls) ? urls : [urls]
     uni.previewImage({
-      urls,
-      current: urls[current],
+      urls: imageUrls,
+      current: imageUrls[current] || imageUrls[0],
       indicator: 'number',
-      loop: true
+      loop: imageUrls.length > 1 // 只有多张图片时才启用循环
+    })
+  }
+
+  // 跳转到用户主页
+  const goToUserProfile = (item) => {
+    if (!item.user_id) {
+      uni.showToast({
+        title: '用户信息不存在',
+        icon: 'none'
+      })
+      return
+    }
+    uni.navigateTo({
+      url: `/pages/user/profile?id=${item.user_id}`
     })
   }
 
   // 处理关注
-  const handleFollow = (item) => {
-    item.isFollowed = !item.isFollowed
-    // 这里可以添加实际的关注/取消关注逻辑
-    uni.showToast({
-      title: item.isFollowed ? '关注成功' : '已取消关注',
-      icon: 'none'
+  const handleFollow = async (item) => {
+    if (!item.user_id) {
+      uni.showToast({
+        title: '用户信息不存在',
+        icon: 'none'
+      })
+      return
+    }
+    try {
+      const isFollow = !item.isFollowed
+      const res = await API_POST_FOLLOW_USER(item.user_id, isFollow)
+      
+      if (res.data.status === 0) {
+        item.isFollowed = isFollow
+        uni.showToast({
+          title: isFollow ? '关注成功' : '已取消关注',
+          icon: 'none'
+        })
+      } else {
+        uni.showToast({
+          title: res.data.message || '操作失败',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('关注操作失败:', error)
+      uni.showToast({
+        title: '操作失败',
+        icon: 'none'
+      })
+    }
+  }
+
+  // 跳转到文章详情页
+  const goToPostDetail = (item) => {
+    uni.navigateTo({
+      url: `/pages/post/detail?id=${item.id}`
+    })
+  }
+
+  // 跳转到发帖页面
+  const goToPost = () => {
+    uni.navigateTo({
+      url: '/pages/post/post'
     })
   }
 
   // 处理点赞
-  const handleLike = (item) => {
-    item.isLiked = !item.isLiked
-    item.likes += item.isLiked ? 1 : -1
-    uni.showToast({
-      title: item.isLiked ? '点赞成功' : '已取消点赞',
-      icon: 'none'
-    })
+  const handleLike = async (item) => {
+    try {
+      const isLike = !item.isLiked
+      const res = await API_POST_LIKE(item.id, isLike)
+      
+      if (res.data.status === 0) {
+        item.isLiked = isLike
+        item.likes += isLike ? 1 : -1
+        uni.showToast({
+          title: isLike ? '点赞成功' : '已取消点赞',
+          icon: 'none'
+        })
+      } else {
+        uni.showToast({
+          title: res.data.message || '操作失败',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('点赞操作失败:', error)
+      uni.showToast({
+        title: '操作失败',
+        icon: 'none'
+      })
+    }
   }
 
   // 下拉刷新状态
@@ -287,45 +401,48 @@
   // 当前页码
   const page = ref(1)
 
-  // 模拟获取数据
-  const getMockData = (categoryId, pageNum) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newData = [
-          {
-            id: Date.now(),
-            avatar: '/static/avatar1.jpg',
-            nickname: '用户' + (pageNum * 4 - 3),
-            level: Math.floor(Math.random() * 10) + 1,
-            time: '刚刚',
-            content: '这是第' + pageNum + '页的内容',
-            images: ['/static/demo1.jpg'],
-            likes: Math.floor(Math.random() * 100),
-            views: Math.floor(Math.random() * 1000),
-            comments: Math.floor(Math.random() * 50),
-            category: categoryId,
-            isFollowed: false,
-            isLiked: false
-          },
-          {
-            id: Date.now() + 1,
-            avatar: '/static/avatar2.jpg',
-            nickname: '用户' + (pageNum * 4 - 2),
-            level: Math.floor(Math.random() * 10) + 1,
-            time: '刚刚',
-            content: '这是第' + pageNum + '页的内容',
-            images: ['/static/demo1.jpg'],
-            likes: Math.floor(Math.random() * 100),
-            views: Math.floor(Math.random() * 1000),
-            comments: Math.floor(Math.random() * 50),
-            category: categoryId,
-            isFollowed: false,
-            isLiked: false
-          }
-        ]
-        resolve(newData)
-      }, 1000)
-    })
+  // 获取文章列表数据
+  const getPostList = async (categoryId, page, pageSize = 10) => {
+    try {
+      const res = await API_POST_GET_LIST({
+        cate_id: categoryId,
+        page,
+        pageSize
+      })
+      
+      if (res.data.status === 0) {
+        // 处理返回的数据，添加用户信息和图片
+        const processedData = res.data.data.map(item => ({
+          id: item.id,
+          content: item.content,
+          images: item.image_url ? [item.image_url] : [], // 将单个图片转换为数组
+          avatar: item.user_pic || '/static/logo.jpg', // 用户头像，如果没有则使用默认头像
+          nickname: item.nickname,
+          user_id: item.user_id, // 添加用户ID
+          level: item.level || 1,
+          time: item.pub_date,
+          likes: item.likes || 0,
+          views: item.views || 0,
+          comments: item.comments || 0,
+          isLiked: false,
+          isFollowed: false
+        }))
+        return processedData
+      } else {
+        uni.showToast({
+          title: res.data.message || '获取文章列表失败',
+          icon: 'none'
+        })
+        return []
+      }
+    } catch (error) {
+      console.error('获取文章列表失败:', error)
+      uni.showToast({
+        title: '获取文章列表失败',
+        icon: 'none'
+      })
+      return []
+    }
   }
 
   // 加载更多
@@ -334,7 +451,7 @@
     
     isLoading.value = true
     try {
-      const newData = await getMockData(categoryId, page.value + 1)
+      const newData = await getPostList(categoryId, page.value + 1)
       if (newData.length === 0) {
         hasMore.value = false
         uni.showToast({
@@ -343,11 +460,7 @@
         })
       } else {
         page.value++
-        if (categoryId === 1) {
-          list.value.push(...newData)
-        } else {
-          list.value.push(...newData.filter(item => item.category === categoryId))
-        }
+        list.value.push(...newData)
       }
     } catch (error) {
       uni.showToast({
@@ -366,12 +479,8 @@
     hasMore.value = true
     
     try {
-      const newData = await getMockData(categoryId, 1)
-      if (categoryId === 1) {
-        list.value = newData
-      } else {
-        list.value = newData.filter(item => item.category === categoryId)
-      }
+      const newData = await getPostList(categoryId, 1)
+      list.value = newData
     } catch (error) {
       uni.showToast({
         title: '刷新失败',
@@ -402,6 +511,11 @@
       url: `/pages/userPackage/postDetail?postId=${item.id}`
     })
   }
+  
+  // 组件挂载时获取分类数据
+  onMounted(() => {
+    fetchCategories()
+  })
 </script>
 
 <style lang="scss">

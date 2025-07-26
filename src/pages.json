@@ -46,6 +46,13 @@
         "navigationBarTitleText": "登录",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/webview/webview",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "网页浏览"
+      }
     }
   ],
   "tabBar": {
