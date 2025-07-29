@@ -66,7 +66,7 @@
               <image class="avatar" :src="item.avatar" @click.stop="goToUserProfile(item)" />
               <view class="user-info" @click.stop="goToUserProfile(item)">
                 <view class="nickname">
-                  {{ item.nickname }}<text class="level"> Lv.{{ item.level }}</text>
+                  {{ item.nickname }}<text class="level">{{ item.level }}</text>
                 </view>
                 <view class="time">{{ item.time }}</view>
               </view>
@@ -84,7 +84,7 @@
                 :key="idx"
                 :src="img"
                 class="feed-img"
-                mode="aspectFill"
+                mode="aspectFit"
                 @click.stop="previewImage(item.images, idx)"
               />
             </view>
@@ -137,9 +137,11 @@
     try {
       const res = await API_ARTICLE_GET_CATEGORIES()
       if (res.data.status === 0) {
-        // 直接使用后端返回的分类数据
-        categories.value = res.data.data
-        // 默认选中第一个分类
+        // 添加"全部"分类，并合并后端返回的分类数据
+        categories.value = [
+          ...res.data.data
+        ]
+        // 默认选中"全部"分类
         activeCategory.value = categories.value[0]?.id || 0
         
         // 初始化广告状态
@@ -209,7 +211,12 @@
 
   // 获取对应分类的内容列表
   const getCategoryList = (categoryId) => {
-    return list.value
+    // 如果是全部分类（id为0）或者没有指定分类，返回所有列表
+    if (categoryId === 0) {
+      return list.value
+    }
+    // 根据分类ID过滤列表
+    return list.value.filter(item => item.category_id === categoryId)
   }
 
   // 广告控制
@@ -357,12 +364,7 @@
     })
   }
 
-  // 跳转到发帖页面
-  const goToPost = () => {
-    uni.navigateTo({
-      url: '/pages/post/post'
-    })
-  }
+
 
   // 处理点赞
   const handleLike = async (item) => {
@@ -401,6 +403,19 @@
   // 当前页码
   const page = ref(1)
 
+  // 等级名称映射
+  const getLevelName = (level) => {
+    const levelNames = {
+      1: '深海窥屏鱼类',
+      2: '偶尔冒泡的锦鲤',
+      3: '冲鸭冲鸭冲鸭',
+      4: '永动机型话痨',
+      5: '人形自走热点',
+      6: '神龙见首不见尾的传说'
+    }
+    return levelNames[level] || '未知等级'
+  }
+
   // 获取文章列表数据
   const getPostList = async (categoryId, page, pageSize = 10) => {
     try {
@@ -412,21 +427,23 @@
       
       if (res.data.status === 0) {
         // 处理返回的数据，添加用户信息和图片
-        const processedData = res.data.data.map(item => ({
+        const processedData = res.data.data.list.map(item => ({
           id: item.id,
+          category_id: item.category_id,
           content: item.content,
-          images: item.image_url ? [item.image_url] : [], // 将单个图片转换为数组
-          avatar: item.user_pic || '/static/logo.jpg', // 用户头像，如果没有则使用默认头像
-          nickname: item.nickname,
+          images: (item.images && item.images.length > 0) ? item.images.map(img => img.startsWith('http') ? img : `${import.meta.env.VITE_APP_API_BASEURL}/uploads/${img}`) : [], // 处理图片URL
+          avatar: item.user?.avatar ? (item.user.avatar.startsWith('http') ? item.user.avatar : `${import.meta.env.VITE_APP_API_BASEURL}/uploads/${item.user.avatar}`) : '/static/logo.jpg', // 用户头像处理
+          nickname: item.user?.nickname || '用户' + item.user_id,
           user_id: item.user_id, // 添加用户ID
-          level: item.level || 1,
-          time: item.pub_date,
-          likes: item.likes || 0,
-          views: item.views || 0,
-          comments: item.comments || 0,
-          isLiked: false,
-          isFollowed: false
+          level: getLevelName(item.level || item.user?.level || 1),
+          time: item.created_at?.split('T')[0], // 只显示年月日
+          likes: item.like_count || 0,
+          views: item.view_count || 0,
+          comments: item.comment_count || 0,
+          isLiked: item.is_liked || false,
+          isFollowed: item.is_followed || false
         }))
+        list.value = processedData
         return processedData
       } else {
         uni.showToast({
@@ -491,24 +508,18 @@
     }
   }
 
+  // 初始化数据
+  onMounted(async () => {
+    // 获取分类数据
+    await fetchCategories()
+    // 获取默认分类的文章列表
+    await getPostList(activeCategory.value, 1)
+  })
+
   // 跳转到发帖页面
   const goToPost = () => {
     uni.navigateTo({
       url: '/pages/post/post'
-    })
-  }
-
-  // 跳转到用户主页
-  const goToUserProfile = (item) => {
-    uni.navigateTo({
-      url: `/pages/userPackage/userProfile?userId=${item.id}`
-    })
-  }
-
-  // 跳转到帖子详情
-  const goToPostDetail = (item) => {
-    uni.navigateTo({
-      url: `/pages/userPackage/postDetail?postId=${item.id}`
     })
   }
   
@@ -720,7 +731,16 @@
     overflow-x: hidden;
   }
   .feed-images {
+    display: flex;
     flex-wrap: wrap;
+    gap: 10rpx;
+    padding: 10rpx 0;
+
+    .feed-img {
+      width: 220rpx;
+      height: 220rpx;
+      border-radius: 8rpx;
+    }
   }
 
   .feed-swiper {
