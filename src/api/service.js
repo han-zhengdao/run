@@ -7,20 +7,11 @@ export function createService() {
     baseURL: import.meta.env.VITE_APP_API_BASEURL
   })
   request.interceptors.request.use(
-    (request) => {
-      return request
-    },
-    (err) => {
-      return Promise.reject(err)
-    }
-  )
-
-  request.interceptors.request.use(
     (config) => {
       // 自动携带 token
       const token = uni.getStorageSync('token')
       if (token) {
-        config.headers.Authorization = 'Bearer ' + token
+        config.headers.Authorization = `Bearer ${token}`
       }
       return config
     },

@@ -94,7 +94,6 @@ const hasNewMessage = ref(true)
 const userInfo = ref(null)
 
 onMounted(async () => {
-  console.log('onMounted 执行了')
   // 获取状态栏高度
   const systemInfo = uni.getSystemInfoSync()
   statusBarHeight.value = systemInfo.statusBarHeight
@@ -105,12 +104,8 @@ onMounted(async () => {
       url: '/my/userinfo',
       method: 'GET'
     })
-    console.log('接口原始返回', res)
     userInfo.value = res.data?.data || res.data || {}
-    console.log('赋值后', userInfo.value)
   } catch (error) {
-    console.log('catch error', error)
-    console.error('获取用户信息失败', error)
     uni.showToast({
       title: '获取用户信息失败',
       icon: 'none'

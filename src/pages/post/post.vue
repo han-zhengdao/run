@@ -141,8 +141,15 @@ const goBack = () => {
 
 // 选择图片
 const chooseImage = () => {
+  if (images.value.length >= 6) {
+    uni.showToast({
+      title: '最多只能上传6张图片',
+      icon: 'none'
+    })
+    return
+  }
   uni.chooseImage({
-    count: 9 - images.value.length,
+    count: 6 - images.value.length,
     success: (res) => {
       images.value = [...images.value, ...res.tempFilePaths]
     }
@@ -170,66 +177,90 @@ const selectCategory = (category) => {
   closeCategoryPopup()
 }
 
-// 发布帖子
+// 发布文章
 const handlePublish = async () => {
+  // 校验内容
   if (!content.value.trim()) {
     uni.showToast({
       title: '请输入内容',
-      icon: 'none'
+      icon: 'none',
+      duration: 2000
     })
     return
   }
-  
+
+  // 校验分类
   if (!selectedCategory.value) {
     uni.showToast({
       title: '请选择分类',
-      icon: 'none'
+      icon: 'none',
+      duration: 2000
     })
     return
   }
-  
-  try {
-    uni.showLoading({
-      title: '发布中...'
-    })
 
-    // 上传图片
-    const uploadedImages = []
+  // 校验图片数量
+  if (images.value.length > 6) {
+    uni.showToast({
+      title: '最多只能上传6张图片',
+      icon: 'none',
+      duration: 2000
+    })
+    return
+  }
+
+  // 准备表单数据
+  const formData = {
+    content: content.value.trim(),
+    cate_id: selectedCategory.value.id
+  }
+
+  try {
+    // 如果有图片，先上传图片
     if (images.value.length > 0) {
-      for (const tempFilePath of images.value) {
-        try {
-          // 使用Promise方式调用uploadFile
-          const uploadRes = await uni.uploadFile({
-            url: import.meta.env.VITE_APP_API_BASEURL + '/my/upload',
-            image_url: tempFilePath,
-            name: 'file',
+      uni.showLoading({
+        title: '正在上传图片...'
+      })
+
+      // 上传所有图片
+      const uploadPromises = images.value.map(filePath => {
+        return new Promise((resolve, reject) => {
+          uni.uploadFile({
+            url: import.meta.env.VITE_APP_API_BASEURL + '/upload/temp',
+            filePath,
+            name: 'pics',
+            formData: {},
             header: {
               Authorization: uni.getStorageSync('token')
+            },
+            success: (res) => {
+              try {
+                const data = JSON.parse(res.data)
+                if (data.status === 0) {
+                  resolve(data.data.tempPath)
+                } else {
+                  reject(new Error(data.data?.message || '图片上传失败'))
+                }
+              } catch (error) {
+                reject(new Error('解析上传响应失败'))
+              }
+            },
+            fail: (err) => {
+              reject(new Error(err.errMsg || '图片上传失败'))
             }
           })
-          
-          const result = JSON.parse(uploadRes.data)
-          if (result.status === 0) {
-            uploadedImages.push(result.data.url)
-          } else {
-            throw new Error(result.message || '图片上传失败')
-          }
-        } catch (error) {
-          console.error('图片上传失败:', error)
-          throw new Error('图片上传失败')
-        }
-      }
+        })
+      })
+
+      // 等待所有图片上传完成
+      const tempPaths = await Promise.all(uploadPromises)
+      formData.image_paths = tempPaths
     }
 
     // 发布文章
-    const res = await API_ARTICLE_ADD({
-      content: content.value,
-      cate_id: selectedCategory.value.id,  // 修改参数名为cate_id
-      image_url: uploadedImages
-    })
+    const res = await API_ARTICLE_ADD(formData)
 
     if (res.data.status === 0) {
-      uni.hideLoading()
       uni.showToast({
         title: '发布成功',
         icon: 'success'
@@ -242,13 +273,16 @@ const handlePublish = async () => {
     }
   } catch (error) {
     console.error('发布失败:', error)
-    uni.hideLoading()
     uni.showToast({
-      title: error.message || '发布失败',
+      title: typeof error === 'string' ? error : (error.message || '发布失败'),
       icon: 'none'
     })
+  } finally {
+    uni.hideLoading()
   }
 }
+
+
 </script>
 
 <style lang="scss">

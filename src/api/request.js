@@ -3,15 +3,9 @@ import config from '@/config'
 
 function createRequest(service) {
   function request(requestConfig) {
-    // requestConfig 自定义配置
-    // axios默认配置
     const configDefault = {
-      baseURL: config.baseURL, // 使用全局配置中的baseURL
-      timeout: 15000, // 请求超时时间
-      responseType: 'json', // 响应类型
-      headers: {
-        // 请求头配置...
-      }
+      timeout: 15000,
+      responseType: 'json'
     }
     const mergedConfig = Object.assign(configDefault, requestConfig)
     return service(mergedConfig)

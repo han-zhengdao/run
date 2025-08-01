@@ -3,19 +3,18 @@
  */
 
 import { request } from '../request'
-import { createApiPath } from '../utils'
 
 export default {
   /**
    * 获取文章列表
    * @param {Object} params - 请求参数
    * @param {number} params.categoryId - 分类ID，0表示获取全部分类
-   * @param {number} params.page - 页码
-   * @param {number} params.pageSize - 每页数量
+   * @param {number} params.pagenum - 页码
+   * @param {number} params.pagesize - 每页数量
    * @returns {Promise}
    */
   API_POST_GET_LIST(params = {}) {
-    return request.get(createApiPath('/my/article/getlist'), params)
+    return request.get('/my/article/getlist', params)
   },
   
   /**
@@ -24,7 +23,7 @@ export default {
    * @returns {Promise}
    */
   API_POST_GET_DETAIL(postId) {
-    return request.get(createApiPath(`/post/detail/${postId}`))
+    return request.get(`/post/detail/${postId}`)
   },
   
   /**

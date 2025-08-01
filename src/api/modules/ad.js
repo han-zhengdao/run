@@ -3,7 +3,6 @@
  */
 
 import { request } from '../request'
-import { createApiPath } from '../utils'
 
 export default {
   /**
@@ -12,7 +11,7 @@ export default {
    * @returns {Promise}
    */
   API_AD_GET_LIST(categoryId = 0) {
-    return request.get(createApiPath('/ad/list'), { categoryId })
+    return request.get('/ad/list', { categoryId })
   },
   
   /**
@@ -21,6 +20,6 @@ export default {
    * @returns {Promise}
    */
   API_AD_RECORD_CLICK(adId) {
-    return request.post(createApiPath('/ad/click'), { adId })
+    return request.post('/ad/click', { adId })
   }
 }

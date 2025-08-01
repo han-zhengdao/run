@@ -19,7 +19,6 @@ onMounted(() => {
   if (pageUrl) {
     // 解码URL
     url.value = decodeURIComponent(pageUrl)
-    console.log('WebView加载URL:', url.value)
   } else {
     uni.showToast({
       title: 'URL参数缺失',
@@ -33,7 +32,7 @@ onMounted(() => {
 
 // 处理web-view的消息
 const handleMessage = (event) => {
-  console.log('接收到web-view消息:', event.detail)
+  // 处理从web-view接收到的消息
 }
 </script>
 

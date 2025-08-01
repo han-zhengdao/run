@@ -37,10 +37,10 @@
         <scroll-view 
           scroll-y 
           class="feed-list"
-          @scrolltolower="loadMore(cat.id)"
+          @scrolltolower="() => loadMore(cat.id)"
           :refresher-enabled="true"
           :refresher-triggered="isRefreshing"
-          @refresherrefresh="onRefresh(cat.id)"
+          @refresherrefresh="onRefresh"
         >
           <!-- 广告栏 -->
           <view class="ad-banner" v-if="adStatus[cat.id] && adList[cat.id]?.length">
@@ -136,12 +136,13 @@
   const fetchCategories = async () => {
     try {
       const res = await API_ARTICLE_GET_CATEGORIES()
-      if (res.data.status === 0) {
-        // 添加"全部"分类，并合并后端返回的分类数据
-        categories.value = [
-          ...res.data.data
-        ]
-        // 默认选中"全部"分类
+      if (res.data.status === 0 && Array.isArray(res.data.data)) {
+        // 确保返回的数据是数组
+        categories.value = res.data.data.length > 0 ? res.data.data : [{
+          id: 0,
+          name: '全部'
+        }]
+        // 默认选中第一个分类
         activeCategory.value = categories.value[0]?.id || 0
         
         // 初始化广告状态
@@ -151,13 +152,10 @@
         await initAdList()
         
         // 获取文章列表数据
-        await onRefresh(activeCategory.value)
-        
-        // 显示加载成功提示
-        uni.showToast({
-          title: '数据加载成功',
-          icon: 'success'
-        })
+        const posts = await getPostList(activeCategory.value, 1)
+        if (Array.isArray(posts)) {
+          list.value = posts
+        }
       } else {
         uni.showToast({
           title: res.data.message || '获取分类失败',
@@ -178,13 +176,32 @@
 
   // 切换分类
   const switchCategory = async (categoryId) => {
+    if (activeCategory.value === categoryId) return
+    
     activeCategory.value = categoryId
     // 重置页码并重新加载数据
     page.value = 1
     hasMore.value = true
-    // 获取该分类的文章列表
-    const newData = await getPostList(categoryId, 1)
-    list.value = newData
+    list.value = []
+    
+    try {
+      // 获取该分类的文章列表
+      const newData = await getPostList(categoryId, 1)
+      list.value = newData
+      
+      if (newData.length === 0) {
+        uni.showToast({
+          title: '暂无数据',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('切换分类失败:', error)
+      uni.showToast({
+        title: '切换分类失败',
+        icon: 'none'
+      })
+    }
   }
 
   // 处理滑动切换
@@ -245,8 +262,6 @@
       if (res.data.status === 0) {
         // 更新指定分类的广告数据
         adList.value[categoryId] = res.data.data
-      } else {
-        console.error('获取广告失败:', res.data.message)
       }
     } catch (error) {
       console.error('获取广告失败:', error)
@@ -420,12 +435,14 @@
   const getPostList = async (categoryId, page, pageSize = 10) => {
     try {
       const res = await API_POST_GET_LIST({
-        cate_id: categoryId,
-        page,
-        pageSize
+        categoryId,
+        pagenum: page,
+        pagesize: pageSize
       })
       
-      if (res.data.status === 0) {
+      if (res.data.status === 0 && res.data.data && Array.isArray(res.data.data.list)) {
+        // 更新页码信息
+        page.value = res.data.data.pagenum || page.value
         // 处理返回的数据，添加用户信息和图片
         const processedData = res.data.data.list.map(item => ({
           id: item.id,
@@ -443,7 +460,10 @@
           isLiked: item.is_liked || false,
           isFollowed: item.is_followed || false
         }))
-        list.value = processedData
+        // 只在刷新或初始加载时重置列表
+        if (page === 1) {
+          list.value = processedData
+        }
         return processedData
       } else {
         uni.showToast({
@@ -453,7 +473,6 @@
         return []
       }
     } catch (error) {
-      console.error('获取文章列表失败:', error)
       uni.showToast({
         title: '获取文章列表失败',
         icon: 'none'
@@ -464,41 +483,69 @@
 
   // 加载更多
   const loadMore = async (categoryId) => {
-    if (isLoading.value || !hasMore.value) return
+    if (!hasMore.value || isLoading.value) return
     
     isLoading.value = true
     try {
-      const newData = await getPostList(categoryId, page.value + 1)
-      if (newData.length === 0) {
+      const newData = await getPostList(categoryId, page.value + 1, 10)
+      
+      if (!newData || !Array.isArray(newData) || newData.length === 0) {
         hasMore.value = false
         uni.showToast({
           title: '没有更多数据了',
           icon: 'none'
         })
+        return
+      }
+
+      // 确保不重复添加数据
+      const newIds = new Set(newData.map(item => item.id))
+      const existingIds = new Set(list.value.map(item => item.id))
+      const uniqueNewData = newData.filter(item => !existingIds.has(item.id))
+      
+      if (uniqueNewData.length > 0) {
+        list.value.push(...uniqueNewData)
+        hasMore.value = true
       } else {
-        page.value++
-        list.value.push(...newData)
+        hasMore.value = false
       }
     } catch (error) {
       uni.showToast({
         title: '加载失败',
         icon: 'none'
       })
+      hasMore.value = true
     } finally {
       isLoading.value = false
     }
   }
 
   // 下拉刷新
-  const onRefresh = async (categoryId) => {
+  const onRefresh = async () => {
+    if (isRefreshing.value) return
+    
     isRefreshing.value = true
     page.value = 1
     hasMore.value = true
     
     try {
-      const newData = await getPostList(categoryId, 1)
-      list.value = newData
+      const newData = await getPostList(activeCategory.value, 1)
+      if (newData && Array.isArray(newData)) {
+        list.value = newData
+        if (newData.length > 0) {
+          uni.showToast({
+            title: '刷新成功',
+            icon: 'success'
+          })
+        } else {
+          uni.showToast({
+            title: '暂无数据',
+            icon: 'none'
+          })
+        }
+      }
     } catch (error) {
+      console.error('刷新失败:', error)
       uni.showToast({
         title: '刷新失败',
         icon: 'none'
@@ -508,14 +555,6 @@
     }
   }
 
-  // 初始化数据
-  onMounted(async () => {
-    // 获取分类数据
-    await fetchCategories()
-    // 获取默认分类的文章列表
-    await getPostList(activeCategory.value, 1)
-  })
-
   // 跳转到发帖页面
   const goToPost = () => {
     uni.navigateTo({
@@ -523,9 +562,18 @@
     })
   }
   
-  // 组件挂载时获取分类数据
-  onMounted(() => {
-    fetchCategories()
+  // 初始化数据
+  onMounted(async () => {
+    try {
+      // 获取分类数据
+      await fetchCategories()
+    } catch (error) {
+      console.error('初始化数据失败:', error)
+      uni.showToast({
+        title: '初始化数据失败',
+        icon: 'none'
+      })
+    }
   })
 </script>
 

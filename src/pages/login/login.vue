@@ -54,15 +54,13 @@ async function onGetUserInfo(e) {
         icon: 'success'
       })
       const token = res.data && res.data.data && res.data.data.token
+      // 直接存储原始token，拦截器会自动添加Bearer前缀
       uni.setStorageSync('token', token)
-      console.log('本地 token', uni.getStorageSync('token'))
-      // uni.setStorageSync('userInfo', res.userInfo)
       uni.setStorageSync('userInfo', res.data?.data?.userInfo || e.detail.userInfo)
       uni.reLaunch({
         url: '/pages/index/index'
       })
     } catch (error) {
-      console.error('登录请求失败', error)
       uni.showToast({
         title: (error && error.message) || '网络错误，请重试',
         icon: 'none'
@@ -119,4 +117,4 @@ async function onGetUserInfo(e) {
   color: #333;
   text-align: center;
 }
-</style> 
+</style>
