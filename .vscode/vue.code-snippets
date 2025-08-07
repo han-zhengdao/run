@@ -1,0 +1,9 @@
+{
+  "File Path Reference": {
+    "prefix": "filepath",
+    "body": [
+      "// ${1:/path/to/file.ext#L1-100}"
+    ],
+    "description": "Insert a file path reference with line numbers"
+  }
+}

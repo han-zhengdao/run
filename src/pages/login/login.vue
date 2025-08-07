@@ -2,13 +2,8 @@
   <view class="login-container">
     <image class="logo" src="/static/logo.jpg" mode="aspectFill" />
     <view class="title">微信一键登录</view>
-    <button
-      class="login-btn"
-      open-type="getUserInfo"
-      @getuserinfo="onGetUserInfo"
-      :loading="loading"
-      :disabled="loading"
-    >
+    <button class="login-btn" open-type="getUserInfo" @getuserinfo="onGetUserInfo" :loading="loading"
+      :disabled="loading">
       {{ loading ? '登录中...' : '微信授权登录' }}
     </button>
     <view v-if="userInfo">
@@ -20,10 +15,11 @@
 
 <script setup>
 import { ref } from 'vue'
-import { request } from '@/api/request' // 引入封装好的 request
+import { useRequest } from '@/api' // 引入API模块
 
 const userInfo = ref(null)
 const loading = ref(false)
+const { API_USER_LOGIN } = useRequest() // 获取用户登录API
 
 async function onGetUserInfo(e) {
   if (loading.value) {
@@ -39,24 +35,27 @@ async function onGetUserInfo(e) {
       const code = loginRes.code
 
       // 发送新 code 到后端
-      const res = await request({
-        url: '/api/users',
-        method: 'POST',
-        data: {
-          code, // 临时登录凭证
-          avatar: e.detail.userInfo.avatarUrl,
-          nickname: e.detail.userInfo.nickName
-        }
+      const res = await API_USER_LOGIN({
+        code, // 临时登录凭证
+        avatar: e.detail.userInfo.avatarUrl,
+        nickname: e.detail.userInfo.nickName
       })
 
       uni.showToast({
-        title: '登录成功',
+        title: res.message || '登录成功',
         icon: 'success'
       })
-      const token = res.data && res.data.data && res.data.data.token
-      // 直接存储原始token，拦截器会自动添加Bearer前缀
+      // 根据后端返回格式：{ status: 0, message: '登录成功', data: { nickname, avatar, token, refreshToken } }
+      const { token, refreshToken, nickname, avatar } = res.data
+      // 存储token和refreshToken
       uni.setStorageSync('token', token)
-      uni.setStorageSync('userInfo', res.data?.data?.userInfo || e.detail.userInfo)
+      uni.setStorageSync('refreshToken', refreshToken)
+      // 存储用户信息
+      const userInfo = {
+        nickname: nickname || e.detail.userInfo.nickName,
+        avatar: avatar || e.detail.userInfo.avatarUrl
+      }
+      uni.setStorageSync('userInfo', userInfo)
       uni.reLaunch({
         url: '/pages/index/index'
       })
@@ -86,17 +85,20 @@ async function onGetUserInfo(e) {
   height: 100vh;
   background: #f5f5f5;
 }
+
 .logo {
   width: 120rpx;
   height: 120rpx;
   margin-bottom: 40rpx;
   border-radius: 50%;
 }
+
 .title {
   font-size: 36rpx;
   font-weight: bold;
   margin-bottom: 60rpx;
 }
+
 .login-btn {
   width: 80vw;
   height: 88rpx;
@@ -106,12 +108,14 @@ async function onGetUserInfo(e) {
   border-radius: 44rpx;
   margin-bottom: 40rpx;
 }
+
 .avatar {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
   margin: 20rpx auto 10rpx auto;
 }
+
 .nickname {
   font-size: 28rpx;
   color: #333;

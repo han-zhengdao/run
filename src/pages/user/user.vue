@@ -87,11 +87,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { request } from '@/api/request'
+import { useRequest } from '@/api'
 
 const statusBarHeight = ref(0)
 const hasNewMessage = ref(true)
 const userInfo = ref(null)
+const { API_USER_GET_INFO } = useRequest() // 获取用户信息API
 
 onMounted(async () => {
   // 获取状态栏高度
@@ -100,11 +101,16 @@ onMounted(async () => {
 
   // 获取用户信息
   try {
-    const res = await request({
-      url: '/my/userinfo',
-      method: 'GET'
-    })
-    userInfo.value = res.data?.data || res.data || {}
+    const res = await API_USER_GET_INFO()
+    // 根据后端返回格式处理数据
+    if (res.status === 0) {
+      userInfo.value = res.data || {}
+    } else {
+      uni.showToast({
+        title: res.message || '获取用户信息失败',
+        icon: 'none'
+      })
+    }
   } catch (error) {
     uni.showToast({
       title: '获取用户信息失败',

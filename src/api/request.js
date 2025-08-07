@@ -1,54 +1,50 @@
-import { service } from './service'
-import config from '@/config'
+import service from './service'
+import { handleParams, buildUrl, formatResponse } from './utils'
 
-function createRequest(service) {
-  function request(requestConfig) {
-    const configDefault = {
-      timeout: 15000,
-      responseType: 'json'
-    }
-    const mergedConfig = Object.assign(configDefault, requestConfig)
-    return service(mergedConfig)
+const request = {
+  /**
+   * GET请求
+   * @param {string} url 请求地址
+   * @param {Object} params 请求参数
+   * @param {Object} config 额外配置
+   * @returns {Promise} 请求Promise
+   */
+  get: (url, params = {}, config = {}) => {
+    const cleanParams = handleParams(params)
+    return service.get(buildUrl(url, cleanParams), config).then(formatResponse)
+  },
+
+  /**
+   * POST请求
+   * @param {string} url 请求地址
+   * @param {Object} data 请求数据
+   * @param {Object} config 额外配置
+   * @returns {Promise} 请求Promise
+   */
+  post: (url, data = {}, config = {}) => {
+    return service.post(url, handleParams(data), config).then(formatResponse)
+  },
+
+  /**
+   * PUT请求
+   * @param {string} url 请求地址
+   * @param {Object} data 请求数据
+   * @param {Object} config 额外配置
+   * @returns {Promise} 请求Promise
+   */
+  put: (url, data = {}, config = {}) => {
+    return service.put(url, handleParams(data), config).then(formatResponse)
+  },
+
+  /**
+   * DELETE请求
+   * @param {string} url 请求地址
+   * @param {Object} config 额外配置
+   * @returns {Promise} 请求Promise
+   */
+  delete: (url, config = {}) => {
+    return service.delete(url, config).then(formatResponse)
   }
-  
-  // 扩展方法，简化API调用
-  request.get = (url, params, config = {}) => {
-    return request({
-      method: 'get',
-      url,
-      params,
-      ...config
-    })
-  }
-  
-  request.post = (url, data, config = {}) => {
-    return request({
-      method: 'post',
-      url,
-      data,
-      ...config
-    })
-  }
-  
-  request.put = (url, data, config = {}) => {
-    return request({
-      method: 'put',
-      url,
-      data,
-      ...config
-    })
-  }
-  
-  request.delete = (url, params, config = {}) => {
-    return request({
-      method: 'delete',
-      url,
-      params,
-      ...config
-    })
-  }
-  
-  return request
 }
 
-export const request = createRequest(service)
+export default request

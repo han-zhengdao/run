@@ -2,15 +2,15 @@
  * 文章/帖子相关API
  */
 
-import { request } from '../request'
+import request from '../request'
 
 export default {
   /**
    * 获取文章列表
    * @param {Object} params - 请求参数
    * @param {number} params.categoryId - 分类ID，0表示获取全部分类
-   * @param {number} params.pagenum - 页码
-   * @param {number} params.pagesize - 每页数量
+   * @param {number} params.page - 页码
+   * @param {number} params.pageSize - 每页数量
    * @returns {Promise}
    */
   API_POST_GET_LIST(params = {}) {

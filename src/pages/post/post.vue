@@ -107,11 +107,11 @@ const categories = ref([])
 const fetchCategories = async () => {
   try {
     const res = await API_ARTICLE_GET_CATEGORIES()
-    if (res.data.status === 0) {
-      categories.value = res.data.data
+    if (res.status === 0) {
+      categories.value = res.data
     } else {
       uni.showToast({
-        title: res.data.message || '获取分类失败',
+        title: res.message || '获取分类失败',
         icon: 'none'
       })
     }
@@ -179,102 +179,60 @@ const selectCategory = (category) => {
 
 // 发布文章
 const handlePublish = async () => {
-  // 校验内容
   if (!content.value.trim()) {
     uni.showToast({
       title: '请输入内容',
-      icon: 'none',
-      duration: 2000
+      icon: 'none'
     })
     return
   }
 
-  // 校验分类
   if (!selectedCategory.value) {
     uni.showToast({
       title: '请选择分类',
-      icon: 'none',
-      duration: 2000
+      icon: 'none'
     })
     return
-  }
-
-  // 校验图片数量
-  if (images.value.length > 6) {
-    uni.showToast({
-      title: '最多只能上传6张图片',
-      icon: 'none',
-      duration: 2000
-    })
-    return
-  }
-
-  // 准备表单数据
-  const formData = {
-    content: content.value.trim(),
-    cate_id: selectedCategory.value.id
   }
 
   try {
-    // 如果有图片，先上传图片
-    if (images.value.length > 0) {
-      uni.showLoading({
-        title: '正在上传图片...'
-      })
+    uni.showLoading({
+      title: '发布中...'
+    })
 
-      // 上传所有图片
-      const uploadPromises = images.value.map(filePath => {
-        return new Promise((resolve, reject) => {
-          uni.uploadFile({
-            url: import.meta.env.VITE_APP_API_BASEURL + '/upload/temp',
-            filePath,
-            name: 'pics',
-            formData: {},
-            header: {
-              Authorization: uni.getStorageSync('token')
-            },
-            success: (res) => {
-              try {
-                const data = JSON.parse(res.data)
-                if (data.status === 0) {
-                  resolve(data.data.tempPath)
-                } else {
-                  reject(new Error(data.data?.message || '图片上传失败'))
-                }
-              } catch (error) {
-                reject(new Error('解析上传响应失败'))
-              }
-            },
-            fail: (err) => {
-              reject(new Error(err.errMsg || '图片上传失败'))
-            }
-          })
-        })
-      })
-
-      // 等待所有图片上传完成
-      const tempPaths = await Promise.all(uploadPromises)
-      formData.image_paths = tempPaths
+    const postData = {
+      content: content.value,
+      cate_id: selectedCategory.value.id,
+      picname: JSON.stringify(images.value)
     }
 
-    // 发布文章
-    const res = await API_ARTICLE_ADD(formData)
-
-    if (res.data.status === 0) {
+    const res = await API_ARTICLE_ADD(postData)
+    
+    if (res.status === 0) {
       uni.showToast({
-        title: '发布成功',
+        title: res.message || '发布成功',
         icon: 'success'
       })
+      
+      // 清空表单
+      content.value = ''
+      images.value = []
+      selectedCategory.value = null
+      
+      // 返回上一页
       setTimeout(() => {
         uni.navigateBack()
       }, 1500)
     } else {
-      throw new Error(res.data.message || '发布失败')
+      uni.showToast({
+        title: res.message || '发布失败',
+        icon: 'none'
+      })
     }
   } catch (error) {
     console.error('发布失败:', error)
     uni.showToast({
-      title: typeof error === 'string' ? error : (error.message || '发布失败'),
+      title: '发布失败，请重试',
       icon: 'none'
     })
   } finally {

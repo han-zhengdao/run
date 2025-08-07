@@ -48,6 +48,11 @@ module.exports = {
     'no-plusplus': 'off',
     'no-shadow': 'off',
     'vue/multi-word-component-names': 'off',
+    // 禁用对特殊注释格式的检查，如文件路径引用格式
+    'spaced-comment': 'off',
+    'no-irregular-whitespace': 'off',
+    // 禁用对字符串中特殊路径格式的检查
+    'no-useless-escape': 'off',
     'no-underscore-dangle': 'off',
     'no-use-before-define': 'off',
     'no-undef': 'off',

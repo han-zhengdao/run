@@ -50,14 +50,14 @@ export default ({ command, mode }) => {
     ],
     server: {
       host: '0.0.0.0',
+      port: 5173,
       hmr: true,
       // 仅 H5 端生效，其他端不生效（其他端走build，不走devServer)
       proxy: JSON.parse(VITE_APP_PROXY)
         ? {
             [VITE_APP_PROXY_PREFIX]: {
               target: VITE_APP_API_BASEURL,
-              changeOrigin: true,
-              rewrite: (path) => path.replace(new RegExp(`^${VITE_APP_PROXY_PREFIX}`), '')
+              changeOrigin: true
             }
           }
         : undefined

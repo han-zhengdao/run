@@ -2,7 +2,7 @@
  * 广告相关API
  */
 
-import { request } from '../request'
+import request from '../request'
 
 export default {
   /**
@@ -13,7 +13,7 @@ export default {
   API_AD_GET_LIST(categoryId = 0) {
     return request.get('/ad/list', { categoryId })
   },
-  
+
   /**
    * 记录广告点击
    * @param {number} adId - 广告ID

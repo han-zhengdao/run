@@ -2,7 +2,7 @@
  * 文章分类相关API
  */
 
-import { request } from '../request'
+import request from '../request'
 
 export default {
   /**
@@ -25,11 +25,19 @@ export default {
    * @returns {Promise}
    */
   API_ARTICLE_ADD(data) {
-    return request({
+    const config = {
       url: '/my/article/add',
       method: 'post',
       data
-    })
-  },
+    }
 
+    // 如果是FormData，设置正确的Content-Type
+    if (data instanceof FormData) {
+      config.headers = {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+
+    return request(config)
+  }
 }

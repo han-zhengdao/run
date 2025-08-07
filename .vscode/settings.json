@@ -1,0 +1,41 @@
+{
+  "path-intellisense.mappings": {
+    "@": "${workspaceFolder}/src"
+  },
+  "path-intellisense.extensionOnImport": true,
+  "path-intellisense.showHiddenFiles": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "javascript.validate.enable": false,
+  "typescript.validate.enable": false,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "vue"
+  ],
+  "files.associations": {
+    "*.vue": "vue",
+    "*.code-language-configuration.json": "jsonc"
+  },
+  "editor.formatOnSave": true,
+  "javascript.suggest.paths": false,
+  "typescript.suggest.paths": false,
+  "editor.acceptSuggestionOnEnter": "off",
+  "editor.quickSuggestions": {
+    "comments": true,
+    "strings": true,
+    "other": true
+  },
+  "editor.semanticHighlighting.enabled": true,
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": "comment.line.double-slash",
+        "settings": {
+          "foreground": "#6A9955"
+        }
+      }
+    ]
+  }
+}

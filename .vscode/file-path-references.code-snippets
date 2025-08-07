@@ -1,0 +1,16 @@
+{
+  "File Path Reference": {
+    "prefix": "filepath",
+    "body": [
+      "// ${1:/path/to/file.ext#L1-100}"
+    ],
+    "description": "Insert a file path reference with line numbers"
+  },
+  "Vue File Path Reference": {
+    "prefix": "vuepath",
+    "body": [
+      "// ${1:/C:/Users/admin/Desktop/run/src/pages/index/index.vue#L1-100}"
+    ],
+    "description": "Insert a Vue file path reference with line numbers"
+  }
+}

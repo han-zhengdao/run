@@ -41,7 +41,7 @@ api/
 ### 示例
 
 ```javascript
-import { request } from '../request'
+import request from '../request'
 import { createApiPath, createApiUrl } from '../utils'
 
 export default {
@@ -55,7 +55,7 @@ export default {
   API_USER_LOGIN(data) {
     return request.post('/user/login', data)
   },
-  
+
   /**
    * 获取用户信息
    * @param {string} userId - 用户ID
