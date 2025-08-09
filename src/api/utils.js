@@ -43,6 +43,12 @@ export const buildUrl = (baseUrl, params = {}) => {
  * @returns {Object} 格式化后的数据
  */
 export const formatResponse = (response) => {
+  // 对于登录接口，直接返回原始响应，因为token等字段在根级别
+  if (response?.token || response?.refreshToken) {
+    return response
+  }
+
+  // 对于其他接口，使用标准格式
   return {
     success: response?.status === 0,
     data: response?.data,

@@ -11,19 +11,19 @@ export function formatRelativeTime(time) {
   const now = new Date()
   const targetTime = new Date(time)
   const diff = now.getTime() - targetTime.getTime()
-  
+
   // 如果时间无效，返回原始时间
   if (isNaN(targetTime.getTime())) {
     return time
   }
-  
+
   const seconds = Math.floor(diff / 1000)
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
   const months = Math.floor(days / 30)
   const years = Math.floor(days / 365)
-  
+
   if (seconds < 60) {
     return '刚刚'
   } else if (minutes < 60) {
@@ -56,8 +56,8 @@ export function formatUserLevel(level) {
     4: '永动机型话痨',
     5: '人形自走热点',
     6: '神龙见首不见尾的传说'
-  };
-  return levelNames[level] || '未知等级';
+  }
+  return levelNames[level] || '未知等级'
 }
 
 /**
@@ -68,6 +68,10 @@ export function formatUserLevel(level) {
 export function getAvatarUrl(avatar) {
   if (!avatar || avatar.trim() === '') {
     return '/static/logo.jpg'
+  }
+  // 如果是相对路径，转换为绝对路径
+  if (avatar.startsWith('/') && !avatar.startsWith('/static')) {
+    return `${import.meta.env.VITE_APP_API_BASEURL}${avatar}`
   }
   return avatar
 }

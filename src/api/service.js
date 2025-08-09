@@ -19,7 +19,8 @@ service.interceptors.request.use(
     if (!config.url.startsWith('/api')) {
       const token = uni.getStorageSync('token')
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+        // 如果token已经包含Bearer前缀，直接使用；否则添加Bearer前缀
+        config.headers.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`
       }
     }
     return config

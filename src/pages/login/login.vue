@@ -21,13 +21,18 @@ const userInfo = ref(null)
 const loading = ref(false)
 const { API_USER_LOGIN } = useRequest() // 获取用户登录API
 
+// 防止重复请求的标志
+let isRequesting = false
+
 async function onGetUserInfo(e) {
-  if (loading.value) {
+  // 双重检查防止重复请求
+  if (loading.value || isRequesting) {
     return
   }
 
   if (e.detail.userInfo) {
     loading.value = true
+    isRequesting = true
     userInfo.value = e.detail.userInfo
     try {
       // 每次点击都重新获取 code
@@ -41,21 +46,41 @@ async function onGetUserInfo(e) {
         nickname: e.detail.userInfo.nickName
       })
 
+      // 检查返回数据结构
+      if (!res || res.status !== 0) {
+        throw new Error(res?.message || '登录失败：服务器返回错误')
+      }
+      console.log('登录成功', res)
+
       uni.showToast({
         title: res.message || '登录成功',
         icon: 'success'
       })
-      // 根据后端返回格式：{ status: 0, message: '登录成功', data: { nickname, avatar, token, refreshToken } }
-      const { token, refreshToken, nickname, avatar } = res.data
+
+      // 根据API文档，成功响应直接包含token、refreshToken和user字段
+      const { token, refreshToken, user = {} } = res
+
+      // 验证必要字段
+      if (!token || typeof token !== 'string' || token.trim() === '') {
+        console.error('登录失败：未获取到访问令牌')
+        throw new Error('登录失败：未获取到访问令牌')
+      }
+
       // 存储token和refreshToken
       uni.setStorageSync('token', token)
       uni.setStorageSync('refreshToken', refreshToken)
+
       // 存储用户信息
       const userInfo = {
-        nickname: nickname || e.detail.userInfo.nickName,
-        avatar: avatar || e.detail.userInfo.avatarUrl
+        id: user.id,
+        openid: user.openid,
+        nickname: user.nickname || e.detail.userInfo.nickName,
+        avatar: user.avatar || e.detail.userInfo.avatarUrl,
+        level: user.level,
+        points: user.points
       }
       uni.setStorageSync('userInfo', userInfo)
+
       uni.reLaunch({
         url: '/pages/index/index'
       })
@@ -66,6 +91,7 @@ async function onGetUserInfo(e) {
       })
     } finally {
       loading.value = false
+      isRequesting = false
     }
   } else {
     uni.showToast({

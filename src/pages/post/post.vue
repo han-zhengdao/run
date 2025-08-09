@@ -2,7 +2,7 @@
   <view class="page-container">
     <!-- 背景图 -->
     <image class="bg-image" src="/static/userbg.png" mode="aspectFill"></image>
-    
+
     <!-- 自定义导航栏 -->
     <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-left" @click="goBack">
@@ -10,29 +10,20 @@
       </view>
       <view class="nav-title">发布帖子</view>
     </view>
-    
+
     <!-- 内容区域 -->
     <view class="content-container">
       <view class="post-form">
         <!-- 内容输入 -->
         <view class="form-item">
-          <textarea 
-            class="content-input" 
-            v-model="content" 
-            placeholder="分享新鲜事..." 
-            maxlength="1000"
-          />
+          <textarea class="content-input" v-model="content" placeholder="分享新鲜事..." maxlength="1000" />
           <view class="word-count">{{ content.length }}/1000</view>
         </view>
-        
+
         <!-- 图片上传 -->
         <view class="form-item">
           <view class="image-uploader">
-            <view 
-              class="image-item" 
-              v-for="(img, index) in images" 
-              :key="index"
-            >
+            <view class="image-item" v-for="(img, index) in images" :key="index">
               <image :src="img" mode="aspectFill" />
               <view class="delete-btn" @click="deleteImage(index)">
                 <text class="i-carbon-close text-24rpx" />
@@ -44,7 +35,7 @@
             </view>
           </view>
         </view>
-        
+
         <!-- 分类选择 -->
         <view class="form-item">
           <view class="category-select" @tap="showCategoryPicker">
@@ -74,12 +65,7 @@
           <text class="close-btn" @tap="closeCategoryPopup">×</text>
         </view>
         <view class="category-list">
-          <view 
-            class="category-item" 
-            v-for="cat in categories" 
-            :key="cat.id"
-            @tap="selectCategory(cat)"
-          >
+          <view class="category-item" v-for="cat in categories" :key="cat.id" @tap="selectCategory(cat)">
             {{ cat.name }}
           </view>
         </view>
@@ -92,11 +78,12 @@
 import { ref, onMounted } from 'vue'
 import { useRequest } from '@/api'
 
-const { API_ARTICLE_GET_CATEGORIES, API_ARTICLE_ADD } = useRequest()
+const { API_ARTICLE_GET_CATEGORIES, API_ARTICLE_ADD, API_UPLOAD_TEMP_IMAGE } = useRequest()
 
 const statusBarHeight = ref(0)
 const content = ref('')
-const images = ref([])
+const images = ref([]) // 本地图片路径
+const uploadedImages = ref([]) // 已上传的临时图片路径
 const selectedCategory = ref(null)
 const showCategoryPopup = ref(false)
 
@@ -106,20 +93,40 @@ const categories = ref([])
 // 获取分类列表
 const fetchCategories = async () => {
   try {
+    console.log('开始获取分类列表...')
     const res = await API_ARTICLE_GET_CATEGORIES()
+    console.log('分类接口响应:', res)
+
     if (res.status === 0) {
       categories.value = res.data
+      console.log('分类列表获取成功:', categories.value)
     } else {
+      console.error('分类接口返回错误:', res)
+      let errorMsg = res.message || '获取分类失败'
+
+      // 特殊处理身份认证失败
+      if (res.status === 1 && res.message?.includes('身份认证失败')) {
+        errorMsg = '请先登录后再发布帖子'
+        // 跳转到登录页面
+        setTimeout(() => {
+          uni.navigateTo({
+            url: '/pages/login/login'
+          })
+        }, 1500)
+      }
+
       uni.showToast({
-        title: res.message || '获取分类失败',
-        icon: 'none'
+        title: errorMsg,
+        icon: 'none',
+        duration: 3000
       })
     }
   } catch (error) {
     console.error('获取分类失败:', error)
     uni.showToast({
-      title: '获取分类失败',
-      icon: 'none'
+      title: '网络错误，请检查网络连接',
+      icon: 'none',
+      duration: 3000
     })
   }
 }
@@ -150,8 +157,42 @@ const chooseImage = () => {
   }
   uni.chooseImage({
     count: 6 - images.value.length,
-    success: (res) => {
-      images.value = [...images.value, ...res.tempFilePaths]
+    success: async (res) => {
+      // 显示上传进度
+      uni.showLoading({
+        title: '上传图片中...'
+      })
+
+      try {
+        // 逐个上传图片到临时目录
+        for (const filePath of res.tempFilePaths) {
+          const uploadRes = await API_UPLOAD_TEMP_IMAGE(filePath)
+          if (uploadRes.status === 0) {
+            images.value.push(filePath) // 本地预览路径
+            // 从返回的image_urls数组中获取临时路径
+            if (uploadRes.data.image_urls && uploadRes.data.image_urls.length > 0) {
+              // 提取文件名（使用split方法获取最后的文件名部分）
+              const tempPath = uploadRes.data.image_urls[0].split('/').pop()
+              uploadedImages.value.push(tempPath) // 服务器临时文件名
+            }
+          } else {
+            throw new Error(uploadRes.message || '上传失败')
+          }
+        }
+
+        uni.hideLoading()
+        uni.showToast({
+          title: '图片上传成功',
+          icon: 'success'
+        })
+      } catch (error) {
+        uni.hideLoading()
+        console.error('图片上传失败:', error)
+        uni.showToast({
+          title: error.message || '图片上传失败',
+          icon: 'none'
+        })
+      }
     }
   })
 }
@@ -159,6 +200,7 @@ const chooseImage = () => {
 // 删除图片
 const deleteImage = (index) => {
   images.value.splice(index, 1)
+  uploadedImages.value.splice(index, 1)
 }
 
 // 显示分类选择器
@@ -203,26 +245,33 @@ const handlePublish = async () => {
     const postData = {
       content: content.value,
       cate_id: selectedCategory.value.id,
-      picname: JSON.stringify(images.value)
+      tempImages: uploadedImages.value
     }
 
     const res = await API_ARTICLE_ADD(postData)
-    
+
     if (res.status === 0) {
       uni.showToast({
         title: res.message || '发布成功',
         icon: 'success'
       })
-      
+
       // 清空表单
       content.value = ''
       images.value = []
+      uploadedImages.value = []
       selectedCategory.value = null
-      
-      // 返回上一页
+
+      // 跳转到首页并刷新
       setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
+        uni.switchTab({
+          url: '/pages/index/index',
+          success: () => {
+            // 通过事件总线通知首页刷新
+            uni.$emit('refreshHomePage')
+          }
+        })
+      }, 800)
     } else {
       uni.showToast({
         title: res.message || '发布失败',
@@ -239,8 +288,6 @@ const handlePublish = async () => {
     uni.hideLoading()
   }
 }
-
-
 </script>
 
 <style lang="scss">
@@ -269,7 +316,7 @@ const handlePublish = async () => {
   display: flex;
   align-items: center;
   padding: 0 24rpx;
-  
+
   .nav-left {
     width: 60rpx;
     height: 60rpx;
@@ -278,7 +325,7 @@ const handlePublish = async () => {
     justify-content: center;
     color: #fff;
   }
-  
+
   .nav-title {
     position: absolute;
     left: 50%;
@@ -302,11 +349,11 @@ const handlePublish = async () => {
   padding: 32rpx;
   width: 100%;
   box-sizing: border-box;
-  
+
   .form-item {
     margin-bottom: 32rpx;
     position: relative;
-    
+
     .content-input {
       width: 100%;
       height: 400rpx;
@@ -315,7 +362,7 @@ const handlePublish = async () => {
       line-height: 1.6;
       padding: 0;
     }
-    
+
     .word-count {
       position: absolute;
       right: 0;
@@ -323,23 +370,23 @@ const handlePublish = async () => {
       font-size: 24rpx;
       color: #999;
     }
-    
+
     .image-uploader {
       display: flex;
       flex-wrap: wrap;
       gap: 20rpx;
-      
+
       .image-item {
         width: 200rpx;
         height: 200rpx;
         position: relative;
-        
+
         image {
           width: 100%;
           height: 100%;
           border-radius: 12rpx;
         }
-        
+
         .delete-btn {
           position: absolute;
           right: -10rpx;
@@ -354,7 +401,7 @@ const handlePublish = async () => {
           color: #fff;
         }
       }
-      
+
       .upload-btn {
         width: 200rpx;
         height: 200rpx;
@@ -365,26 +412,26 @@ const handlePublish = async () => {
         align-items: center;
         justify-content: center;
         color: #999;
-        
+
         .upload-text {
           font-size: 24rpx;
           margin-top: 8rpx;
         }
       }
     }
-    
+
     .category-select {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 24rpx 0;
       border-bottom: 1rpx solid #f0f0f0;
-      
+
       .label {
         font-size: 28rpx;
         color: #333;
       }
-      
+
       .selected-category {
         display: flex;
         align-items: center;
@@ -393,7 +440,7 @@ const handlePublish = async () => {
 
         .category-text {
           margin-right: 8rpx;
-          
+
           &.placeholder {
             color: #999;
           }
@@ -415,7 +462,7 @@ const handlePublish = async () => {
   font-size: 32rpx;
   font-weight: 500;
   box-shadow: 0 4rpx 16rpx rgba(29, 161, 242, 0.3);
-  
+
   &:active {
     transform: scale(0.98);
   }
@@ -428,7 +475,7 @@ const handlePublish = async () => {
   right: 0;
   bottom: 0;
   z-index: 1000;
-  
+
   .popup-mask {
     position: absolute;
     top: 0;
@@ -438,12 +485,12 @@ const handlePublish = async () => {
     background: rgba(0, 0, 0, 0.5);
     opacity: 0;
     transition: opacity 0.3s ease;
-    
+
     &.mask-show {
       opacity: 1;
     }
   }
-  
+
   .popup-content {
     position: absolute;
     left: 0;
@@ -454,45 +501,45 @@ const handlePublish = async () => {
     padding: 32rpx;
     transform: translateY(100%);
     transition: transform 0.5s ease;
-    
+
     &.content-show {
       transform: translateY(0);
     }
-    
+
     .popup-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 32rpx;
-      
+
       .popup-title {
         font-size: 32rpx;
         font-weight: 500;
         color: #333;
       }
-      
+
       .close-btn {
         font-size: 40rpx;
         color: #999;
         padding: 0 20rpx;
       }
     }
-    
+
     .category-list {
       max-height: 60vh;
       overflow-y: auto;
       padding-bottom: 50px;
-      
+
       .category-item {
         padding: 24rpx 0;
         font-size: 28rpx;
         color: #333;
         border-bottom: 1rpx solid #f0f0f0;
-        
+
         &:last-child {
           border-bottom: none;
         }
-        
+
         &:active {
           background: #f5f5f5;
         }
