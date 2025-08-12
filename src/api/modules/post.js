@@ -73,5 +73,29 @@ export default {
    */
   API_COMMENT_REPLY(commentId, content) {
     return request.post('/my/interaction/reply', { commentId, content })
+  },
+
+  /**
+   * 获取评论列表
+   * @param {Object} params - 请求参数
+   * @param {number} params.articleId - 文章ID，必须为正整数
+   * @param {number} [params.pageNum=1] - 页码，默认1
+   * @param {number} [params.pageSize=10] - 每页数量，默认10，最大50
+   * @returns {Promise} 返回包含评论列表、分页信息的响应
+   */
+  API_COMMENT_GET_LIST(params) {
+    return request.get('/my/interaction/comments', params)
+  },
+
+  /**
+   * 获取回复列表
+   * @param {Object} params - 请求参数
+   * @param {number} params.commentId - 评论ID，必须为正整数
+   * @param {number} [params.pageNum=1] - 页码，默认1
+   * @param {number} [params.pageSize=10] - 每页数量，默认10，最大50
+   * @returns {Promise} 返回包含回复列表、分页信息的响应
+   */
+  API_REPLY_GET_LIST(params) {
+    return request.get('/my/interaction/replies', params)
   }
 }
