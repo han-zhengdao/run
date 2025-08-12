@@ -2,7 +2,7 @@
   <view class="page-container">
     <!-- 背景图 -->
     <image class="bg-image" src="/static/userbg.png" mode="aspectFill"></image>
-    
+
     <!-- 自定义导航栏 -->
     <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-left" @click="goBack">
@@ -10,7 +10,7 @@
       </view>
       <view class="nav-title">帖子详情</view>
     </view>
-    
+
     <!-- 滚动区域 -->
     <scroll-view class="scroll-container" scroll-y @scrolltolower="loadMoreComments">
       <!-- 帖子内容 -->
@@ -24,23 +24,14 @@
               </view>
               <view class="time">{{ postInfo.time }}</view>
             </view>
-            <view
-              :class="['follow-btn', postInfo.isFollowed ? 'followed' : '']"
-              @click="handleFollow(postInfo)"
-            >
+            <view :class="['follow-btn', postInfo.isFollowed ? 'followed' : '']" @click="handleFollow(postInfo)">
               <text>{{ postInfo.isFollowed ? '已关注' : '关注' }}</text>
             </view>
           </view>
           <view class="post-content">{{ postInfo.content }}</view>
           <view v-if="postInfo.images && postInfo.images.length" class="post-images">
-            <image
-              v-for="(img, idx) in postInfo.images"
-              :key="idx"
-              :src="img"
-              class="post-img"
-              mode="aspectFill"
-              @click="previewImage(postInfo.images, idx)"
-            />
+            <image v-for="(img, idx) in postInfo.images" :key="idx" :src="img" class="post-img" mode="aspectFill"
+              @click="previewImage(postInfo.images, idx)" />
           </view>
           <view class="post-footer">
             <view class="footer-item" @click="handleLike(postInfo)">
@@ -72,7 +63,10 @@
                   </view>
                   <view class="comment-actions">
                     <view class="action-item" @click="handleCommentLike(comment)">
-                      <text :class="['i-carbon-favorite text-24rpx mr-2', comment.isLiked ? 'liked' : '']" />
+                      <text :class="[
+                        'i-carbon-favorite text-24rpx mr-2',
+                        comment.isLiked ? 'liked' : ''
+                      ]" />
                       <text>{{ comment.likes }}</text>
                     </view>
                     <view class="action-item" @click="handleReply(comment)">
@@ -82,7 +76,8 @@
                   </view>
                 </view>
                 <view class="comment-text">
-                  <text v-if="comment.replyTo" class="reply-to">回复 <text class="nickname">@{{ comment.replyTo.nickname }}</text>：</text>
+                  <text v-if="comment.replyTo" class="reply-to">回复 <text class="nickname">@{{ comment.replyTo.nickname
+                      }}</text>：</text>
                   {{ comment.content }}
                 </view>
               </view>
@@ -94,14 +89,9 @@
 
     <!-- 评论输入框 -->
     <view class="comment-input-wrapper">
-      <input
-        class="comment-input"
-        v-model="commentContent"
-        :placeholder="replyTo ? `回复 ${replyTo.nickname}：` : '说点什么...'"
-        :focus="showKeyboard"
-        @confirm="submitComment"
-        @blur="handleInputBlur"
-      />
+      <input class="comment-input" v-model="commentContent"
+        :placeholder="replyTo ? `回复 ${replyTo.nickname}：` : '说点什么...'" :focus="showKeyboard" @confirm="submitComment"
+        @blur="handleInputBlur" />
       <view class="send-btn" @click="submitComment">发送</view>
     </view>
   </view>
@@ -109,6 +99,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRequest } from '@/api'
 
 const statusBarHeight = ref(0)
 const postId = ref('')
@@ -158,12 +149,12 @@ onMounted(() => {
   // 获取状态栏高度
   const systemInfo = uni.getSystemInfoSync()
   statusBarHeight.value = systemInfo.statusBarHeight
-  
+
   // 获取路由参数
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   postId.value = currentPage.options?.postId
-  
+
   // 这里可以根据postId获取帖子信息和评论列表
   // fetchPostInfo(postId.value)
   // fetchComments(postId.value)
@@ -201,23 +192,57 @@ const previewImage = (urls, current) => {
 }
 
 // 处理点赞
-const handleLike = (post) => {
-  post.isLiked = !post.isLiked
-  post.likes += post.isLiked ? 1 : -1
-  uni.showToast({
-    title: post.isLiked ? '点赞成功' : '已取消点赞',
-    icon: 'none'
-  })
+const handleLike = async (post) => {
+  try {
+    const { API_POST_LIKE } = useRequest()
+    const response = await API_POST_LIKE(post.id)
+
+    if (response.status === 0) {
+      // 根据接口返回的状态更新UI
+      post.isLiked = response.data.isLiked
+      post.likes += response.data.isLiked ? 1 : -1
+
+      uni.showToast({
+        title: response.message,
+        icon: 'none'
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('点赞操作失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
+  }
 }
 
 // 处理评论点赞
-const handleCommentLike = (comment) => {
-  comment.isLiked = !comment.isLiked
-  comment.likes += comment.isLiked ? 1 : -1
-  uni.showToast({
-    title: comment.isLiked ? '点赞成功' : '已取消点赞',
-    icon: 'none'
-  })
+const handleCommentLike = async (comment) => {
+  try {
+    const { API_COMMENT_LIKE } = useRequest()
+    const response = await API_COMMENT_LIKE(comment.id)
+
+    if (response.status === 0) {
+      // 根据接口返回的状态更新UI
+      comment.isLiked = response.data.isLiked
+      comment.likes += response.data.isLiked ? 1 : -1
+
+      uni.showToast({
+        title: response.message,
+        icon: 'none'
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('点赞评论失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
+  }
 }
 
 // 处理回复评论
@@ -225,7 +250,8 @@ const handleReply = (comment) => {
   replyTo.value = comment
   showKeyboard.value = true
   // 聚焦输入框
-  uni.createSelectorQuery()
+  uni
+    .createSelectorQuery()
     .select('.comment-input')
     .boundingClientRect()
     .exec((res) => {
@@ -247,7 +273,7 @@ const handleInputBlur = () => {
 }
 
 // 提交评论
-const submitComment = () => {
+const submitComment = async () => {
   if (!commentContent.value.trim()) {
     uni.showToast({
       title: '请输入评论内容',
@@ -256,31 +282,79 @@ const submitComment = () => {
     return
   }
 
-  // 这里添加实际的评论提交逻辑
-  const newComment = {
-    id: Date.now(),
-    userId: 1, // 当前用户ID
-    nickname: '当前用户',
-    avatar: '/static/avatar1.jpg',
-    content: commentContent.value,
-    time: '刚刚',
-    likes: 0,
-    isLiked: false,
-    replyTo: replyTo.value ? {
-      userId: replyTo.value.userId,
-      nickname: replyTo.value.nickname
-    } : null
+  try {
+    const { API_COMMENT_CREATE, API_COMMENT_REPLY } = useRequest()
+    let response
+
+    if (replyTo.value) {
+      // 回复评论
+      response = await API_COMMENT_REPLY(replyTo.value.id, commentContent.value.trim())
+      
+      if (response.status === 0) {
+        // 创建新回复对象
+        const newReply = {
+          id: response.data.replyId,
+          userId: 1, // 当前用户ID
+          nickname: '当前用户',
+          avatar: '/static/avatar1.jpg',
+          content: response.data.content,
+          time: '刚刚',
+          likes: 0,
+          isLiked: false,
+          replyTo: {
+            userId: replyTo.value.userId,
+            nickname: replyTo.value.nickname
+          }
+        }
+        
+        comments.value.unshift(newReply)
+        replyTo.value = null
+      }
+    } else {
+      // 发表新评论
+      response = await API_COMMENT_CREATE(postInfo.value.id, commentContent.value.trim())
+      
+      if (response.status === 0) {
+        // 创建新评论对象
+        const newComment = {
+          id: response.data.commentId,
+          userId: 1, // 当前用户ID
+          nickname: '当前用户',
+          avatar: '/static/avatar1.jpg',
+          content: response.data.content,
+          time: '刚刚',
+          likes: 0,
+          isLiked: false,
+          replyTo: null
+        }
+        
+        comments.value.unshift(newComment)
+      }
+    }
+
+    if (response.status === 0) {
+      commentContent.value = ''
+      showKeyboard.value = false
+
+      // 更新帖子评论数
+      if (postInfo.value) {
+        postInfo.value.comments++
+      }
+
+      uni.showToast({
+        title: response.message,
+        icon: 'success'
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('操作失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
   }
-
-  comments.value.unshift(newComment)
-  commentContent.value = ''
-  replyTo.value = null
-  showKeyboard.value = false
-
-  uni.showToast({
-    title: '评论成功',
-    icon: 'success'
-  })
 }
 
 // 加载更多评论
@@ -323,7 +397,7 @@ const loadMoreComments = () => {
   align-items: center;
   justify-content: center;
   color: #fff;
-  
+
   .nav-left {
     position: absolute;
     left: 24rpx;
@@ -332,7 +406,7 @@ const loadMoreComments = () => {
     display: flex;
     align-items: center;
   }
-  
+
   .nav-title {
     font-size: 36rpx;
     font-weight: 500;
@@ -369,17 +443,20 @@ const loadMoreComments = () => {
 
     .user-info {
       flex: 1;
+
       .nickname {
         font-size: 32rpx;
         font-weight: 500;
         color: #333;
         margin-bottom: 8rpx;
+
         .level {
           font-size: 24rpx;
           color: #ff9800;
           margin-left: 8rpx;
         }
       }
+
       .time {
         font-size: 24rpx;
         color: #999;
@@ -474,6 +551,7 @@ const loadMoreComments = () => {
               color: #333;
               margin-right: 16rpx;
             }
+
             .time {
               font-size: 24rpx;
               color: #999;
@@ -504,6 +582,7 @@ const loadMoreComments = () => {
 
           .reply-to {
             color: #666;
+
             .nickname {
               color: #1da1f2;
             }
@@ -520,7 +599,7 @@ const loadMoreComments = () => {
   color: #fff;
   border-radius: 30rpx;
   font-size: 24rpx;
-  
+
   &.followed {
     background: #f0f0f0;
     color: #666;
@@ -559,4 +638,4 @@ const loadMoreComments = () => {
     padding: 0 20rpx;
   }
 }
-</style> 
+</style>

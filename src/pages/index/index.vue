@@ -36,7 +36,8 @@
 
           <view class="feed-item" v-for="item in getCategoryList(cat.id)" :key="item.id">
             <view class="feed-header">
-              <image class="avatar" :src="item.avatar" @click.stop="goToUserProfile(item)" />
+              <image class="avatar" :src="item.avatar" @click.stop="goToUserProfile(item)"
+                @error="handleAvatarError(item)" />
               <view class="user-info" @click.stop="goToUserProfile(item)">
                 <view class="nickname">
                   {{ item.nickname }}<text class="level">{{ item.level }}</text>
@@ -58,7 +59,7 @@
             </view>
             <view v-if="item.images && item.images.length" class="feed-images">
               <image v-for="(img, idx) in item.images" :key="idx" :src="img" class="feed-img" mode="aspectFit"
-                @click.stop="previewImage(item.images, idx)" />
+                @click.stop="previewImage(item.images, idx)" @error="handleImageError(item, idx)" />
             </view>
             <view class="feed-footer">
               <view class="footer-item" @click="goToPostDetail(item)">
@@ -82,7 +83,7 @@
 
           <!-- 没有更多数据提示 -->
           <view v-if="getCategoryList(cat.id).length > 0 && !hasMoreData[cat.id]" class="no-more-data">
-            <text class="no-more-text">— 没有更多内容了 —</text>
+            <text class="no-more-text">没有更多内容了</text>
           </view>
         </scroll-view>
       </swiper-item>
@@ -121,15 +122,31 @@ const hasMoreData = ref({}) // 记录每个分类是否还有更多数据
 const adStatus = ref({})
 const adList = ref({})
 
+// 默认图片路径
+const defaultAvatar = '/static/errimg.png'
+const defaultImage = '/static/errimg.png'
+
 // 获取文章列表
 const getPostList = async (categoryId = activeCategory.value) => {
   try {
     loading.value = { ...loading.value, [categoryId]: true }
-    const res = await API_POST_GET_LIST({
-      pagenum: pageNum.value[categoryId] || 1,
-      pagesize: pageSize.value
-    })
+
+    // 构建API请求参数
+    const params = {
+      pageNum: pageNum.value[categoryId] || 1,
+      pageSize: 10,
+      state: 1 // 只获取已发布的文章
+    }
+
+    // 如果不是全部分类，添加分类筛选
+    if (categoryId !== 0) {
+      params.cate_id = categoryId
+    }
+
+    const res = await API_POST_GET_LIST(params)
+
     if (res.status === 0) {
+      // 转换文章数据格式
       const newArticles = res.data.articles.map((item) => ({
         id: item.id,
         avatar: getAvatarUrl(item.user_avatar),
@@ -148,22 +165,21 @@ const getPostList = async (categoryId = activeCategory.value) => {
         views: item.view_count || 0,
         comments: item.comment_count || 0,
         isLiked: false,
-        showFullContent: false // 初始化为折叠状态
+        showFullContent: false
       }))
 
-      // 判断是否还有更多数据
-      const hasMore = newArticles.length === pageSize.value
-      hasMoreData.value = { ...hasMoreData.value, [categoryId]: hasMore }
-
+      // 初始化分类列表
       if (!postList.value[categoryId]) {
         postList.value[categoryId] = []
       }
 
-      if ((pageNum.value[categoryId] || 1) === 1) {
-        // 第一页直接替换
+      const currentPageNum = pageNum.value[categoryId] || 1
+
+      if (currentPageNum === 1) {
+        // 第一页：直接替换数据
         postList.value = { ...postList.value, [categoryId]: newArticles }
       } else {
-        // 加载更多时，过滤重复数据后合并
+        // 后续页：追加数据，过滤重复项
         const existingIds = new Set(postList.value[categoryId].map((item) => item.id))
         const uniqueNewArticles = newArticles.filter((item) => !existingIds.has(item.id))
         postList.value = {
@@ -171,6 +187,13 @@ const getPostList = async (categoryId = activeCategory.value) => {
           [categoryId]: [...postList.value[categoryId], ...uniqueNewArticles]
         }
       }
+
+      // 根据API文档计算是否还有更多数据
+      // 使用API返回的pagenum和total进行计算
+      const totalPages = Math.ceil(res.data.total / res.data.pagesize)
+      const hasMore = res.data.pagenum < totalPages
+
+      hasMoreData.value = { ...hasMoreData.value, [categoryId]: hasMore }
     }
   } catch (error) {
     console.error('获取文章列表失败:', error)
@@ -193,15 +216,22 @@ const onRefresh = async () => {
 
 // 加载更多
 const loadMore = async (categoryId) => {
-  if (loading.value[categoryId]) return
-
-  // 初始化页码
-  if (!pageNum.value[categoryId]) {
-    pageNum.value[categoryId] = 1
-  } else {
-    // 只有在不是第一页时才递增页码
-    pageNum.value = { ...pageNum.value, [categoryId]: pageNum.value[categoryId] + 1 }
+  if (loading.value[categoryId]) {
+    return
   }
+
+  // 如果没有更多数据，直接返回
+  if (hasMoreData.value[categoryId] === false) {
+    return
+  }
+
+  // 初始化或递增页码
+  if (!pageNum.value[categoryId]) {
+    pageNum.value = { ...pageNum.value, [categoryId]: 1 }
+  }
+
+  // 递增页码加载下一页
+  pageNum.value = { ...pageNum.value, [categoryId]: (pageNum.value[categoryId] || 1) + 1 }
 
   await getPostList(categoryId)
 }
@@ -245,14 +275,35 @@ const handleSwiperChange = (e) => {
 // 跳转到文章详情
 const goToPostDetail = (item) => {
   uni.navigateTo({
-    url: `/pages/post/detail?id=${item.id}`
+    url: `/pages/detail/detail?id=${item.id}`
   })
 }
 
 // 处理点赞
-const handleLike = (item) => {
-  item.isLiked = !item.isLiked
-  item.likes += item.isLiked ? 1 : -1
+const handleLike = async (item) => {
+  try {
+    const { API_POST_LIKE } = useRequest()
+    const response = await API_POST_LIKE(item.id)
+
+    if (response.status === 0) {
+      // 根据接口返回的状态更新UI
+      item.isLiked = response.data.isLiked
+      item.likes += response.data.isLiked ? 1 : -1
+
+      uni.showToast({
+        title: response.message,
+        icon: 'none'
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('点赞操作失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
+  }
 }
 
 // 跳转到发帖页面
@@ -364,6 +415,20 @@ onMounted(async () => {
 onUnmounted(() => {
   uni.$off('refreshHomePage')
 })
+
+// 处理头像加载失败
+const handleAvatarError = (item) => {
+  if (item) {
+    item.avatar = defaultAvatar
+  }
+}
+
+// 处理帖子图片加载失败
+const handleImageError = (item, index) => {
+  if (item && item.images && item.images[index]) {
+    item.images[index] = defaultImage
+  }
+}
 </script>
 
 <style lang="scss">
@@ -522,7 +587,7 @@ body,
         }
 
         .time {
-          font-size: 22rpx;
+          font-size: 24rpx;
           color: #bbb;
           margin-top: 4rpx;
         }
@@ -684,17 +749,11 @@ text {
 }
 
 .follow-btn {
-  padding: 8rpx 24rpx 10rpx;
+  padding: 11rpx 24rpx 13rpx;
   background: #000;
   color: #fff;
-  border-radius: 50rpx;
+  border-radius: 32rpx;
   font-size: 24rpx;
-  margin-left: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 44rpx;
 
   &.followed {
     background: #f0f0f0;

@@ -2,7 +2,7 @@
   <view class="page-container">
     <!-- 背景图 -->
     <image class="bg-image" src="/static/userbg.png" mode="aspectFill"></image>
-    
+
     <!-- 自定义导航栏 -->
     <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-left" @click="goBack">
@@ -10,7 +10,7 @@
       </view>
       <view class="nav-title">用户主页</view>
     </view>
-    
+
     <!-- 滚动区域 -->
     <scroll-view class="scroll-container" scroll-y>
       <view class="profile-container">
@@ -47,14 +47,8 @@
           <view class="feed-item" v-for="item in userPosts" :key="item.id" @click="goToPostDetail(item)">
             <view class="feed-content">{{ item.content }}</view>
             <view v-if="item.images && item.images.length" class="feed-images">
-              <image
-                v-for="(img, idx) in item.images"
-                :key="idx"
-                :src="img"
-                class="feed-img"
-                mode="aspectFill"
-                @click="previewImage(item.images, idx)"
-              />
+              <image v-for="(img, idx) in item.images" :key="idx" :src="img" class="feed-img" mode="aspectFill"
+                @click="previewImage(item.images, idx)" />
             </view>
             <view class="feed-footer">
               <view class="footer-item" @click="handleLike(item)">
@@ -80,6 +74,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRequest } from '@/api'
 
 const statusBarHeight = ref(0)
 const userId = ref('')
@@ -121,12 +116,12 @@ onMounted(() => {
   // 获取状态栏高度
   const systemInfo = uni.getSystemInfoSync()
   statusBarHeight.value = systemInfo.statusBarHeight
-  
+
   // 获取路由参数
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   userId.value = currentPage.options?.userId
-  
+
   // 这里可以根据userId获取用户信息和帖子列表
   // fetchUserInfo(userId.value)
   // fetchUserPosts(userId.value)
@@ -157,13 +152,30 @@ const previewImage = (urls, current) => {
 }
 
 // 处理点赞
-const handleLike = (item) => {
-  item.isLiked = !item.isLiked
-  item.likes += item.isLiked ? 1 : -1
-  uni.showToast({
-    title: item.isLiked ? '点赞成功' : '已取消点赞',
-    icon: 'none'
-  })
+const handleLike = async (item) => {
+  try {
+    const { API_POST_LIKE } = useRequest()
+    const response = await API_POST_LIKE(item.id)
+
+    if (response.status === 0) {
+      // 根据接口返回的状态更新UI
+      item.isLiked = response.data.isLiked
+      item.likes += response.data.isLiked ? 1 : -1
+
+      uni.showToast({
+        title: response.message,
+        icon: 'none'
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('点赞操作失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
+  }
 }
 
 // 跳转到关注列表
@@ -232,7 +244,7 @@ const goToPostDetail = (item) => {
   display: flex;
   align-items: center;
   padding: 0 24rpx;
-  
+
   .nav-left {
     width: 80rpx;
     height: 80rpx;
@@ -241,7 +253,7 @@ const goToPostDetail = (item) => {
     justify-content: center;
     color: #fff;
   }
-  
+
   .nav-title {
     flex: 1;
     text-align: center;
@@ -277,6 +289,7 @@ const goToPostDetail = (item) => {
 
     .info-content {
       flex: 1;
+
       .nickname {
         font-size: 36rpx;
         font-weight: 500;
@@ -323,7 +336,7 @@ const goToPostDetail = (item) => {
   color: #fff;
   border-radius: 30rpx;
   font-size: 24rpx;
-  
+
   &.followed {
     background: #f0f0f0;
     color: #666;
@@ -350,6 +363,7 @@ const goToPostDetail = (item) => {
       display: flex;
       gap: 12rpx;
       margin-bottom: 16rpx;
+
       .feed-img {
         width: 180rpx;
         height: 180rpx;
@@ -362,13 +376,13 @@ const goToPostDetail = (item) => {
       display: flex;
       gap: 60rpx;
       align-items: center;
-      
+
       .footer-item {
         display: flex;
         align-items: center;
         font-size: 26rpx;
         color: #888;
-        
+
         .liked {
           color: #1da1f2;
         }
@@ -382,4 +396,4 @@ const goToPostDetail = (item) => {
     }
   }
 }
-</style> 
+</style>

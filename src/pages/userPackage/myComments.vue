@@ -2,7 +2,7 @@
   <view class="page-container">
     <!-- 背景图 -->
     <image class="bg-image" src="/static/userbg.png" mode="aspectFill"></image>
-    
+
     <!-- 自定义导航栏 -->
     <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-left" @click="goBack">
@@ -10,7 +10,7 @@
       </view>
       <view class="nav-title">我的评论</view>
     </view>
-    
+
     <!-- 滚动区域 -->
     <scroll-view class="scroll-container" scroll-y @scrolltolower="loadMore">
       <view class="comments-container">
@@ -53,12 +53,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRequest } from '@/api'
 
 const statusBarHeight = ref(0)
 const isLoading = ref(false)
 const noMore = ref(false)
 const commentsList = ref([
   {
+    id: 101,
     postId: 1,
     postContent: '今天天气真好，出去走走~ #生活 #日常',
     avatar: '/static/logo.jpg',
@@ -69,6 +71,7 @@ const commentsList = ref([
     isLiked: false
   },
   {
+    id: 102,
     postId: 2,
     postContent: '分享一个超好吃的餐厅，强烈推荐！ #美食 #探店',
     avatar: '/static/logo.jpg',
@@ -79,6 +82,7 @@ const commentsList = ref([
     isLiked: true
   },
   {
+    id: 103,
     postId: 3,
     postContent: '新买的相机到了，拍几张试试效果 #摄影 #器材',
     avatar: '/static/logo.jpg',
@@ -105,13 +109,30 @@ const goToPost = (postId) => {
   })
 }
 
-const handleLike = (item) => {
-  item.isLiked = !item.isLiked
-  item.likeCount += item.isLiked ? 1 : -1
-  uni.showToast({
-    title: item.isLiked ? '已点赞' : '已取消点赞',
-    icon: 'none'
-  })
+const handleLike = async (item) => {
+  try {
+    const { API_COMMENT_LIKE } = useRequest()
+    const response = await API_COMMENT_LIKE(item.id)
+
+    if (response.status === 0) {
+      // 根据接口返回的状态更新UI
+      item.isLiked = response.data.isLiked
+      item.likeCount += response.data.isLiked ? 1 : -1
+
+      uni.showToast({
+        title: response.message,
+        icon: 'none'
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('点赞评论失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
+  }
 }
 
 const handleReply = (item) => {
@@ -123,7 +144,7 @@ const handleReply = (item) => {
 const loadMore = () => {
   if (isLoading.value || noMore.value) return
   isLoading.value = true
-  
+
   // 模拟加载更多数据
   setTimeout(() => {
     noMore.value = true
@@ -170,13 +191,13 @@ const loadMore = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   .nav-left {
     position: absolute;
     left: 24rpx;
     padding: 20rpx;
   }
-  
+
   .nav-title {
     color: #fff;
     font-size: 36rpx;
@@ -256,13 +277,13 @@ const loadMore = () => {
         display: flex;
         gap: 40rpx;
         align-items: center;
-        
+
         .action-item {
           display: flex;
           align-items: center;
           font-size: 26rpx;
           color: #888;
-          
+
           .liked {
             color: #1da1f2;
           }
@@ -272,10 +293,11 @@ const loadMore = () => {
   }
 }
 
-.loading, .no-more {
+.loading,
+.no-more {
   text-align: center;
   padding: 24rpx;
   color: #999;
   font-size: 24rpx;
 }
-</style> 
+</style>

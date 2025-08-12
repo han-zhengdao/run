@@ -53,6 +53,13 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "网页浏览"
       }
+    },
+    {
+      "path": "pages/detail/detail",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "tabBar": {

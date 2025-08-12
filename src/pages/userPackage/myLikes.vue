@@ -2,7 +2,7 @@
   <view class="page-container">
     <!-- 背景图 -->
     <image class="bg-image" src="/static/userbg.png" mode="aspectFill"></image>
-    
+
     <!-- 自定义导航栏 -->
     <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-left" @click="goBack">
@@ -10,7 +10,7 @@
       </view>
       <view class="nav-title">我的点赞</view>
     </view>
-    
+
     <!-- 滚动区域 -->
     <scroll-view class="scroll-container" scroll-y @scrolltolower="loadMore">
       <view class="posts-container">
@@ -26,13 +26,8 @@
             <view class="post-content" @click="goToPost(item.id)">
               <text>{{ item.content }}</text>
               <view class="post-images" v-if="item.images && item.images.length">
-                <image 
-                  v-for="(img, imgIndex) in item.images" 
-                  :key="imgIndex"
-                  :src="img"
-                  mode="aspectFill"
-                  @click.stop="previewImage(item.images, imgIndex)"
-                />
+                <image v-for="(img, imgIndex) in item.images" :key="imgIndex" :src="img" mode="aspectFill"
+                  @click.stop="previewImage(item.images, imgIndex)" />
               </view>
             </view>
             <view class="post-actions">
@@ -60,6 +55,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRequest } from '@/api'
 
 const statusBarHeight = ref(0)
 const isLoading = ref(false)
@@ -131,19 +127,36 @@ const handleComment = (item) => {
   })
 }
 
-const handleLike = (item) => {
-  item.isLiked = !item.isLiked
-  item.likeCount += item.isLiked ? 1 : -1
-  uni.showToast({
-    title: item.isLiked ? '已点赞' : '已取消点赞',
-    icon: 'none'
-  })
+const handleLike = async (item) => {
+  try {
+    const { API_POST_LIKE } = useRequest()
+    const response = await API_POST_LIKE(item.id)
+
+    if (response.status === 0) {
+      // 根据接口返回的状态更新UI
+      item.isLiked = response.data.isLiked
+      item.likeCount += response.data.isLiked ? 1 : -1
+
+      uni.showToast({
+        title: response.message,
+        icon: 'none'
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('点赞操作失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
+  }
 }
 
 const loadMore = () => {
   if (isLoading.value || noMore.value) return
   isLoading.value = true
-  
+
   // 模拟加载更多数据
   setTimeout(() => {
     noMore.value = true
@@ -190,13 +203,13 @@ const loadMore = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   .nav-left {
     position: absolute;
     left: 24rpx;
     padding: 20rpx;
   }
-  
+
   .nav-title {
     color: #fff;
     font-size: 36rpx;
@@ -269,13 +282,13 @@ const loadMore = () => {
       gap: 60rpx;
       align-items: center;
       margin: 30rpx 0 0 0;
-      
+
       .action-item {
         display: flex;
         align-items: center;
         font-size: 26rpx;
         color: #888;
-        
+
         .liked {
           color: #1da1f2;
         }
@@ -284,10 +297,11 @@ const loadMore = () => {
   }
 }
 
-.loading, .no-more {
+.loading,
+.no-more {
   text-align: center;
   padding: 24rpx;
   color: #999;
   font-size: 24rpx;
 }
-</style> 
+</style>

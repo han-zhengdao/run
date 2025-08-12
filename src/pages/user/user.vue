@@ -2,19 +2,20 @@
   <view class="page-container">
     <!-- 背景图 -->
     <image class="bg-image" src="/static/userbg.png" mode="aspectFill"></image>
-    
+
     <!-- 自定义导航栏 -->
     <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-title"></view>
     </view>
-    
+
     <!-- 滚动区域 -->
     <scroll-view class="scroll-container" scroll-y>
       <view class="profile-container">
         <!-- 用户信息卡片 -->
         <view class="user-card">
           <view class="user-info">
-            <image class="avatar" :src="userInfo?.avatar || '/static/logo.jpg'" mode="aspectFill" />
+            <image class="avatar" :src="userInfo?.avatar || '/static/logo.jpg'" mode="aspectFill"
+              @error="handleAvatarError" />
             <view class="info-content">
               <view class="nickname">{{ userInfo?.nickname || '未登录' }}</view>
               <view class="user-level">
@@ -185,166 +186,173 @@ const handleMenuClick = (type) => {
     icon: 'none'
   })
 }
+
+// 处理头像加载失败
+const handleAvatarError = () => {
+  if (userInfo.value) {
+    userInfo.value.avatar = '/static/errimg.png'
+  }
+}
 </script>
 
 <style lang="scss">
-  .page-container {
-    position: relative;
-    min-height: 100vh;
-    background: #f5f5f5;
-  }
+.page-container {
+  position: relative;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
 
-  .bg-image {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 400rpx;
-    z-index: 0;
-  }
+.bg-image {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 400rpx;
+  z-index: 0;
+}
 
-  .scroll-container {
-    position: relative;
-    z-index: 1;
-    height: 100vh;
-  }
+.scroll-container {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+}
 
-  .profile-container {
-    padding: 0;
-    padding-top: 88rpx;
-  }
+.profile-container {
+  padding: 0;
+  padding-top: 88rpx;
+}
 
-  .custom-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    height: 88rpx;
+.custom-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .nav-title {
+    color: #fff;
+    font-size: 36rpx;
+    font-weight: 500;
+  }
+}
+
+.user-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin: 24rpx;
+  margin-top: 160rpx;
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 48rpx);
+  box-sizing: border-box;
+
+  .user-info {
     display: flex;
     align-items: center;
-    justify-content: center;
-    
-    .nav-title {
-      color: #fff;
-      font-size: 36rpx;
-      font-weight: 500;
+    margin-bottom: 32rpx;
+    position: relative;
+
+    .avatar {
+      width: 120rpx;
+      height: 120rpx;
+      border-radius: 50%;
+      margin-right: 24rpx;
+    }
+
+    .info-content {
+      flex: 1;
+
+      .nickname {
+        font-size: 36rpx;
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 8rpx;
+      }
+
+      .user-level {
+        font-size: 24rpx;
+        color: #999;
+      }
+    }
+
+    .message-btn {
+      width: 80rpx;
+      height: 80rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      position: relative;
+
+      .badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 16rpx;
+        height: 16rpx;
+        background: #ff4d4f;
+        border-radius: 50%;
+        border: 2rpx solid #fff;
+      }
     }
   }
 
-  .user-card {
+  .user-stats {
+    display: flex;
+    justify-content: space-around;
+    border-top: 1rpx solid #f0f0f0;
+    padding-top: 32rpx;
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      .num {
+        font-size: 32rpx;
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 8rpx;
+      }
+
+      .label {
+        font-size: 24rpx;
+        color: #999;
+      }
+    }
+  }
+}
+
+.menu-list {
+  .menu-group {
     background: #fff;
     border-radius: 20rpx;
-    padding: 32rpx;
-    margin: 24rpx;
-    margin-top: 160rpx;
-    position: relative;
-    z-index: 1;
+    margin: 0 24rpx 24rpx;
+    overflow: hidden;
     width: calc(100% - 48rpx);
     box-sizing: border-box;
 
-    .user-info {
+    .menu-item {
       display: flex;
       align-items: center;
-      margin-bottom: 32rpx;
-      position: relative;
+      padding: 32rpx 24rpx;
+      font-size: 28rpx;
+      color: #333;
+      border-bottom: 1rpx solid #f0f0f0;
 
-      .avatar {
-        width: 120rpx;
-        height: 120rpx;
-        border-radius: 50%;
-        margin-right: 24rpx;
+      &:last-child {
+        border-bottom: none;
       }
 
-      .info-content {
-        flex: 1;
-        .nickname {
-          font-size: 36rpx;
-          font-weight: 500;
-          color: #333;
-          margin-bottom: 8rpx;
-        }
-
-        .user-level {
-          font-size: 24rpx;
-          color: #999;
-        }
-      }
-
-      .message-btn {
-        width: 80rpx;
-        height: 80rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #666;
-        position: relative;
-        
-        .badge {
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 16rpx;
-          height: 16rpx;
-          background: #ff4d4f;
-          border-radius: 50%;
-          border: 2rpx solid #fff;
-        }
-      }
-    }
-
-    .user-stats {
-      display: flex;
-      justify-content: space-around;
-      border-top: 1rpx solid #f0f0f0;
-      padding-top: 32rpx;
-
-      .stat-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-
-        .num {
-          font-size: 32rpx;
-          font-weight: 500;
-          color: #333;
-          margin-bottom: 8rpx;
-        }
-
-        .label {
-          font-size: 24rpx;
-          color: #999;
-        }
+      .ml-auto {
+        margin-left: auto;
       }
     }
   }
-
-  .menu-list {
-    .menu-group {
-      background: #fff;
-      border-radius: 20rpx;
-      margin: 0 24rpx 24rpx;
-      overflow: hidden;
-      width: calc(100% - 48rpx);
-      box-sizing: border-box;
-
-      .menu-item {
-        display: flex;
-        align-items: center;
-        padding: 32rpx 24rpx;
-        font-size: 28rpx;
-        color: #333;
-        border-bottom: 1rpx solid #f0f0f0;
-
-        &:last-child {
-          border-bottom: none;
-        }
-
-        .ml-auto {
-          margin-left: auto;
-        }
-      }
-    }
-  }
+}
 </style>
- 

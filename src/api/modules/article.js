@@ -98,5 +98,14 @@ export default {
    */
   API_ARTICLE_ADD(data) {
     return request.post('/my/article/add', data)
+  },
+
+  /**
+   * 获取文章详情
+   * @param {number} id - 文章ID
+   * @returns {Promise}
+   */
+  API_ARTICLE_GET_DETAIL(id) {
+    return request.get(`/my/article/detail/${id}`)
   }
 }
