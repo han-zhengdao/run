@@ -60,6 +60,13 @@
         "navigationStyle": "custom",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/test/followStatus",
+      "style": {
+        "navigationBarTitleText": "关注状态测试",
+        "navigationStyle": "default"
+      }
     }
   ],
   "tabBar": {

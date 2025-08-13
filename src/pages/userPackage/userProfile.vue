@@ -22,7 +22,8 @@
               <view class="nickname">{{ userInfo.nickname }}</view>
               <view class="user-level">Lv.{{ userInfo.level }} 普通会员</view>
             </view>
-            <view class="follow-btn" :class="{ followed: userInfo.isFollowed }" @click="handleFollow">
+            <view v-if="userId !== currentUserId" class="follow-btn" :class="{ followed: userInfo.isFollowed }"
+              @click="handleFollow">
               <text>{{ userInfo.isFollowed ? '已关注' : '关注' }}</text>
             </view>
           </view>
@@ -73,11 +74,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRequest } from '@/api'
 
 const statusBarHeight = ref(0)
 const userId = ref('')
+const currentUserId = ref(null)
 
 // 用户信息
 const userInfo = ref({
@@ -112,7 +114,39 @@ const userPosts = ref([
   }
 ])
 
-onMounted(() => {
+// 获取用户信息
+const fetchUserInfo = async (targetUserId) => {
+  try {
+    // 获取目标用户的详细信息（这里可能需要专门的API，暂时保持现有逻辑）
+    // 检查关注状态
+    await checkFollowStatus(targetUserId)
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
+
+// 检查关注状态
+const checkFollowStatus = async (targetUserId) => {
+  try {
+    const { API_USER_FOLLOW_STATUS } = useRequest()
+    const response = await API_USER_FOLLOW_STATUS(targetUserId)
+
+    if (response.status === 0 && response.data) {
+      userInfo.value.isFollowed = response.data.isFollowing || false
+      console.log('关注状态检查:', {
+        targetUserId: String(targetUserId),
+        isFollowed: userInfo.value.isFollowed
+      })
+    } else {
+      userInfo.value.isFollowed = false
+    }
+  } catch (error) {
+    console.error('检查关注状态失败:', error)
+    userInfo.value.isFollowed = false
+  }
+}
+
+onMounted(async () => {
   // 获取状态栏高度
   const systemInfo = uni.getSystemInfoSync()
   statusBarHeight.value = systemInfo.statusBarHeight
@@ -120,11 +154,46 @@ onMounted(() => {
   // 获取路由参数
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
-  userId.value = currentPage.options?.userId
+  userId.value = currentPage.options?.userId || currentPage.options?.id
 
-  // 这里可以根据userId获取用户信息和帖子列表
-  // fetchUserInfo(userId.value)
-  // fetchUserPosts(userId.value)
+  // 获取当前用户信息
+  try {
+    const { API_USER_GET_INFO } = useRequest()
+    const userRes = await API_USER_GET_INFO()
+    if (userRes.status === 0 && userRes.data) {
+      currentUserId.value = userRes.data.id
+    }
+  } catch (error) {
+    console.error('获取当前用户信息失败:', error)
+  }
+
+  // 获取用户信息和关注状态
+  if (userId.value) {
+    // 只有在查看他人主页时才需要检查关注状态
+    if (String(userId.value) !== String(currentUserId.value)) {
+      await fetchUserInfo(userId.value)
+    } else {
+      // 查看自己的主页，不需要关注状态
+      userInfo.value.isFollowed = false
+    }
+  }
+
+  // 监听关注状态变更事件
+  uni.$on('followStatusChanged', (data) => {
+    if (String(data.userId) === String(userId.value)) {
+      userInfo.value.isFollowed = data.isFollowed
+      console.log('收到关注状态变更事件:', {
+        dataUserId: String(data.userId),
+        currentUserId: String(userId.value),
+        newFollowStatus: data.isFollowed
+      })
+    }
+  })
+})
+
+// 页面卸载时移除事件监听
+onUnmounted(() => {
+  uni.$off('followStatusChanged')
 })
 
 // 返回上一页
@@ -133,12 +202,40 @@ const goBack = () => {
 }
 
 // 处理关注
-const handleFollow = () => {
-  userInfo.value.isFollowed = !userInfo.value.isFollowed
-  uni.showToast({
-    title: userInfo.value.isFollowed ? '关注成功' : '已取消关注',
-    icon: 'none'
-  })
+const handleFollow = async () => {
+  try {
+    const { API_USER_FOLLOW } = useRequest()
+    const response = await API_USER_FOLLOW(userId.value)
+
+    if (response.status === 0) {
+      // 根据接口返回的状态更新UI
+      userInfo.value.isFollowed = response.data.isFollowing
+
+      uni.showToast({
+        title: response.message,
+        icon: 'none'
+      })
+
+      // 发送关注状态变更事件，通知其他页面更新
+      uni.$emit('followStatusChanged', {
+        userId: String(userId.value),
+        isFollowed: response.data.isFollowing
+      })
+
+      console.log('发送关注状态变更事件:', {
+        userId: String(userId.value),
+        isFollowed: response.data.isFollowing
+      })
+    } else {
+      throw new Error(response.message)
+    }
+  } catch (error) {
+    console.error('关注操作失败:', error)
+    uni.showToast({
+      title: '操作失败：' + error.message,
+      icon: 'none'
+    })
+  }
 }
 
 // 预览图片

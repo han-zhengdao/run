@@ -97,5 +97,56 @@ export default {
    */
   API_REPLY_GET_LIST(params) {
     return request.get('/my/interaction/replies', params)
+  },
+
+  /**
+   * 点赞/取消点赞回复（切换式操作）
+   * @param {number} replyId - 回复ID
+   * @returns {Promise} 返回 { status: 0, message: string, data: { isLiked: boolean } }
+   */
+  API_REPLY_LIKE(replyId) {
+    return request.post('/my/interaction/like-reply', { replyId })
+  },
+
+  /**
+   * 关注/取消关注用户（切换式操作）
+   * @param {number} userId - 要关注的用户ID
+   * @returns {Promise} 返回 { status: 0, message: string, data: { userId: number, isFollowing: boolean } }
+   */
+  API_USER_FOLLOW(userId) {
+    return request.post('/my/interaction/follow', { userId })
+  },
+
+  /**
+   * 获取关注列表
+   * @param {Object} params - 请求参数
+   * @param {number} [params.userId] - 用户ID，可选，默认当前用户
+   * @param {number} [params.pageNum=1] - 页码，默认1
+   * @param {number} [params.pageSize=10] - 每页数量，默认10
+   * @returns {Promise} 返回包含关注列表、分页信息的响应
+   */
+  API_USER_FOLLOWING_LIST(params = {}) {
+    return request.get('/my/interaction/following', params)
+  },
+
+  /**
+   * 获取粉丝列表
+   * @param {Object} params - 请求参数
+   * @param {number} [params.userId] - 用户ID，可选，默认当前用户
+   * @param {number} [params.pageNum=1] - 页码，默认1
+   * @param {number} [params.pageSize=10] - 每页数量，默认10
+   * @returns {Promise} 返回包含粉丝列表、分页信息的响应
+   */
+  API_USER_FOLLOWERS_LIST(params = {}) {
+    return request.get('/my/interaction/followers', params)
+  },
+
+  /**
+   * 查询是否关注指定用户
+   * @param {number} userId - 要查询的用户ID
+   * @returns {Promise} 返回 { status: 0, message: string, data: { isFollowing: boolean } }
+   */
+  API_USER_FOLLOW_STATUS(userId) {
+    return request.get('/my/interaction/follow-status', { userId })
   }
 }

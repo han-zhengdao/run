@@ -23,7 +23,7 @@
                                 <view class="user-level">Lv.{{ item.level }} {{ item.levelName }}</view>
                             </view>
                         </view>
-                        <view class="follow-btn" :class="{ 'followed': item.isFollowed }" @click="handleFollow(item)">
+                        <view class="follow-btn" :class="{ followed: item.isFollowed }" @click="handleFollow(item)">
                             {{ item.isFollowed ? '已关注' : '关注' }}
                         </view>
                     </view>
@@ -35,114 +35,70 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRequest } from '@/api'
 
 const statusBarHeight = ref(0)
-const followList = ref([
-    {
-        id: 1,
-        nickname: '张三',
-        avatar: '/static/logo.jpg',
-        level: 3,
-        levelName: '普通会员',
-        isFollowed: true
-    },
-    {
-        id: 2,
-        nickname: '李四',
-        avatar: '/static/logo.jpg',
-        level: 5,
-        levelName: '高级会员',
-        isFollowed: true
-    },
-    {
-        id: 3,
-        nickname: '王五',
-        avatar: '/static/logo.jpg',
-        level: 2,
-        levelName: '普通会员',
-        isFollowed: false
-    },
-    {
-        id: 4,
-        nickname: '赵六',
-        avatar: '/static/logo.jpg',
-        level: 4,
-        levelName: '普通会员',
-        isFollowed: false
-    },
-    {
-        id: 5,
-        nickname: '孙七',
-        avatar: '/static/logo.jpg',
-        level: 6,
-        levelName: '高级会员',
-        isFollowed: true
-    },
-    {
-        id: 6,
-        nickname: '周八',
-        avatar: '/static/logo.jpg',
-        level: 1,
-        levelName: '新手会员',
-        isFollowed: false
-    },
-    {
-        id: 7,
-        nickname: '吴九',
-        avatar: '/static/logo.jpg',
-        level: 3,
-        levelName: '普通会员',
-        isFollowed: true
-    },
-    {
-        id: 8,
-        nickname: '郑十',
-        avatar: '/static/logo.jpg',
-        level: 5,
-        levelName: '高级会员',
-        isFollowed: false
-    },
-    {
-        id: 9,
-        nickname: '钱十一',
-        avatar: '/static/logo.jpg',
-        level: 2,
-        levelName: '普通会员',
-        isFollowed: true
-    },
-    {
-        id: 10,
-        nickname: '孙十二',
-        avatar: '/static/logo.jpg',
-        level: 4,
-        levelName: '普通会员',
-        isFollowed: false
-    },
-    {
-        id: 11,
-        nickname: '李十三',
-        avatar: '/static/logo.jpg',
-        level: 6,
-        levelName: '高级会员',
-        isFollowed: true
+const followList = ref([])
+const loading = ref(false)
+const { API_USER_FOLLOWING_LIST, API_USER_FOLLOW } = useRequest()
+
+// 获取关注列表
+const getFollowingList = async () => {
+    try {
+        loading.value = true
+        const response = await API_USER_FOLLOWING_LIST({ pageSize: 50 })
+
+        if (response.status === 0 && response.data && response.data.users) {
+            followList.value = response.data.users.map((user) => ({
+                id: user.user_id,
+                nickname: user.nickname,
+                avatar: user.avatar || '/static/logo.jpg',
+                level: user.level || 1,
+                levelName: user.level >= 6 ? '高级会员' : '普通会员',
+                isFollowed: user.is_following !== false // 关注列表中的用户默认都是已关注的
+            }))
+        }
+    } catch (error) {
+        console.error('获取关注列表失败:', error)
+        uni.showToast({
+            title: '获取关注列表失败',
+            icon: 'none'
+        })
+    } finally {
+        loading.value = false
     }
-])
+}
 
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync()
     statusBarHeight.value = systemInfo.statusBarHeight
+    getFollowingList()
 })
 
 const goBack = () => {
     uni.navigateBack()
 }
 
-const handleFollow = (item) => {
-    item.isFollowed = !item.isFollowed
-    uni.showToast({
-        title: item.isFollowed ? '已关注' : '已取消关注',
-        icon: 'none'
-    })
+const handleFollow = async (item) => {
+    try {
+        const response = await API_USER_FOLLOW(item.id)
+
+        if (response.status === 0) {
+            item.isFollowed = response.data.isFollowing
+            uni.showToast({
+                title: response.message,
+                icon: 'none'
+            })
+        } else {
+            throw new Error(response.message)
+        }
+    } catch (error) {
+        console.error('关注操作失败:', error)
+        uni.showToast({
+            title: '操作失败：' + error.message,
+            icon: 'none'
+        })
+    }
 }
 </script>
 
@@ -171,7 +127,8 @@ const handleFollow = (item) => {
 .follow-container {
     padding: 0;
     padding-top: 288rpx;
-    padding-bottom: 100rpx; /* 留出底部空间 */
+    padding-bottom: 100rpx;
+    /* 留出底部空间 */
 }
 
 .custom-nav {
@@ -245,7 +202,7 @@ const handleFollow = (item) => {
             border-radius: 32rpx;
             font-size: 24rpx;
             color: #fff;
-            background: #007AFF;
+            background: #007aff;
 
             &.followed {
                 background: #f0f0f0;
