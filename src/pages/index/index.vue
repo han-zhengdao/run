@@ -79,7 +79,7 @@
           </view>
 
           <!-- 没有更多数据提示 -->
-          <view v-if="getCategoryList(cat.id).length > 0 && !hasMoreData[cat.id]" class="no-more-data">
+          <view v-if="getCategoryList(cat.id)?.length > 0 && !hasMoreData[cat.id]" class="no-more-data">
             <text class="no-more-text">没有更多内容了</text>
           </view>
         </scroll-view>
@@ -93,8 +93,9 @@
 </template>
 
 <script setup>
-// 引入API和必要的组件<script setup>
+// 引入API和必要的组件
 import { ref, onMounted, onUnmounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useRequest } from '@/api'
 import {
   formatRelativeTime,
@@ -390,17 +391,54 @@ const toggleContent = (item) => {
 }
 
 // 处理举报
-const handleReport = (item) => {
+const reportedItems = ref(new Set()) // 用于存储已举报的帖子ID
+
+const handleReport = async (item) => {
+  const reportKey = `post_${item.id}`
+  if (reportedItems.value.has(reportKey)) {
+    uni.showToast({
+      title: '您已举报过此内容',
+      icon: 'none'
+    })
+    return
+  }
+
   uni.showActionSheet({
-    itemList: ['举报违规内容', '举报垃圾信息', '举报不当言论'],
-    success: (res) => {
-      const reportTypes = ['违规内容', '垃圾信息', '不当言论']
-      uni.showToast({
-        title: `已举报：${reportTypes[res.tapIndex]}`,
-        icon: 'success'
-      })
-      // TODO: 调用举报API
-      console.log('举报帖子:', item.id, '类型:', reportTypes[res.tapIndex])
+    itemList: ['内容违规', '垃圾信息', '其他'],
+    success: async (res) => {
+      const reasonOptions = ['内容违规', '垃圾信息', '其他']
+      const reason = reasonOptions[res.tapIndex]
+
+      try {
+        const { API_REPORT } = useRequest()
+        const response = await API_REPORT({
+          target_type: 'post',
+          target_id: item.id,
+          reason
+        })
+
+        if (response.status === 0) {
+          uni.showToast({
+            title: '举报成功',
+            icon: 'success'
+          })
+          reportedItems.value.add(reportKey) // 标记为已举报
+        } else {
+          uni.showToast({
+            title: response.message || '举报失败',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        console.error('举报失败:', error)
+        uni.showToast({
+          title: '举报失败，请稍后再试',
+          icon: 'none'
+        })
+      }
+    },
+    fail: (err) => {
+      console.log('取消举报', err)
     }
   })
 }
@@ -460,6 +498,12 @@ onMounted(async () => {
 // 页面卸载时移除事件监听
 onUnmounted(() => {
   uni.$off('refreshHomePage')
+})
+
+// 页面显示时触发
+onShow(() => {
+  // 每次页面显示时刷新数据，确保浏览量等实时更新
+  onRefresh()
 })
 
 // 处理头像加载失败

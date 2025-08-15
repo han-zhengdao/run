@@ -19,6 +19,15 @@ export default {
   },
 
   /**
+   * 增加帖子浏览量
+   * @param {number} articleId - 文章ID
+   * @returns {Promise}
+   */
+  API_POST_INCREASE_VIEW_COUNT(articleId) {
+    return request.post(`/my/interaction/increaseviewcount/${articleId}`)
+  },
+
+  /**
    * 获取文章详情
    * @param {number} postId - 文章ID
    * @returns {Promise}
@@ -33,7 +42,24 @@ export default {
    * @returns {Promise} 返回 { status: 0, message: string, data: { articleId: number, isLiked: boolean } }
    */
   API_POST_LIKE(articleId) {
-    return request.post('/my/interaction/like', { articleId })
+    return request.post('/my/interaction/likearticle', { articleId })
+  },
+
+  /**
+   * 举报内容
+   * @param {string} targetType - 举报目标类型（'post', 'comment', 'reply'）
+   * @param {number} targetId - 举报目标ID
+   * @param {string} reason - 举报原因（'内容违规', '垃圾信息', '其他'）
+   * @returns {Promise}
+   */
+  API_REPORT({ target_type, target_id, reason }) {
+    const typeMap = { post: 1, comment: 2, reply: 3 } // 举报目标类型映射
+    const reasonMap = { 内容违规: 1, 垃圾信息: 2, 其他: 3 } // 举报原因映射
+    return request.post('/my/interaction/report', {
+      target_type: typeMap[target_type] || null,
+      target_id,
+      reason: reasonMap[reason] || null
+    })
   },
 
   /**

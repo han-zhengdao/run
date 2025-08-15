@@ -52,7 +52,7 @@
             <text :class="['i-carbon-favorite text-32rpx mr-2', postDetail.isLiked ? 'liked' : '']" />
             <text>{{ postDetail.likes }}</text>
           </view>
-          <view class="stat-item" @click="handleReport(postDetail)">
+          <view class="stat-item" @click="handleReport('post', postDetail.id)">
             <text class="i-carbon-overflow-menu-horizontal text-32rpx" />
           </view>
         </view>
@@ -85,7 +85,7 @@
                     <text :class="['i-carbon-favorite text-32rpx mr-1', comment.isLiked ? 'liked' : '']" />
                     <text class="action-text">{{ comment.likes || '' }}</text>
                   </view>
-                  <view class="comment-action report-action" @click="handleCommentReport(comment)">
+                  <view class="comment-action report-action" @click="handleReport('comment', comment.id)">
                     <text class="i-carbon-overflow-menu-horizontal text-32rpx" style="color: #999999" />
                   </view>
                 </view>
@@ -119,7 +119,7 @@
                           ]" />
                           <text class="action-text">{{ reply.likes || '' }}</text>
                         </view>
-                        <view class="reply-action report-action" @click="handleReplyReport(reply)">
+                        <view class="reply-action report-action" @click="handleReport('reply', reply.id)">
                           <text class="i-carbon-overflow-menu-horizontal text-32rpx" style="color: #999999" />
                         </view>
                       </view>
@@ -290,6 +290,20 @@ const loadPostDetail = async () => {
         finalIsFollowed: postDetail.value.isFollowed,
         isOwnPost: currentUser.value.id && data.user_id === currentUser.value.id
       })
+
+      // 增加帖子浏览量
+      try {
+        const { API_POST_INCREASE_VIEW_COUNT } = useRequest()
+        const viewResponse = await API_POST_INCREASE_VIEW_COUNT(postId.value)
+        if (viewResponse.status === 0) {
+          postDetail.value.views++ // 成功后手动增加浏览量
+          console.log('浏览量增加成功')
+        } else {
+          console.error('增加浏览量失败:', viewResponse.message)
+        }
+      } catch (viewError) {
+        console.error('增加浏览量失败:', viewError)
+      }
     } else {
       throw new Error(response.message || '获取文章详情失败')
     }
@@ -402,19 +416,6 @@ const handleLike = async (post) => {
       icon: 'none'
     })
   }
-}
-
-// 处理举报
-const handleReport = (post) => {
-  uni.showActionSheet({
-    itemList: ['举报违规内容', '举报垃圾信息', '举报其他'],
-    success: (res) => {
-      uni.showToast({
-        title: '举报成功',
-        icon: 'success'
-      })
-    }
-  })
 }
 
 // 预览图片
@@ -581,7 +582,10 @@ const submitComment = async () => {
             likes: 0,
             isLiked: false
           }
-          targetComment.replies.push(newReply)
+          targetComment.replyCount++ // 增加回复计数
+          // 将新回复添加到回复列表的开头，以便立即显示
+          targetComment.replies.unshift(newReply)
+          console.log('新回复已添加:', newReply)
         }
         replyTarget.value = null
       }
@@ -603,7 +607,10 @@ const submitComment = async () => {
           showAllReplies: false,
           replies: []
         }
+        // 将新评论添加到评论列表的开头，以便立即显示
         commentsList.value.unshift(newComment)
+        totalCommentsCount.value++ // 增加评论总数
+        console.log('新评论已添加:', newComment)
       }
     }
 
@@ -684,38 +691,67 @@ const handleReply = (comment) => {
   replyTarget.value = comment
 }
 
+// 举报相关状态
+// 举报相关状态
+const reportedItems = ref(new Set()) // 存储已举报的 target_type-target_id 组合
+
+// 处理举报
+const handleReport = (type, targetId) => {
+  const reportKey = `${type}-${targetId}`
+  if (reportedItems.value.has(reportKey)) {
+    uni.showToast({
+      title: '您已举报过此内容',
+      icon: 'none'
+    })
+    return
+  }
+
+  uni.showActionSheet({
+    itemList: ['内容违规', '垃圾信息', '其他'],
+    success: async (res) => {
+      const reasonOptions = ['内容违规', '垃圾信息', '其他']
+      const reason = reasonOptions[res.tapIndex]
+
+      try {
+        const { API_REPORT } = useRequest()
+        const response = await API_REPORT({
+          target_type: type,
+          target_id: targetId,
+          reason
+        })
+
+        if (response.status === 0) {
+          uni.showToast({
+            title: '举报成功',
+            icon: 'success'
+          })
+          reportedItems.value.add(reportKey) // 标记为已举报
+        } else {
+          uni.showToast({
+            title: response.message || '举报失败',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        console.error('举报失败:', error)
+        uni.showToast({
+          title: '举报失败，请稍后再试',
+          icon: 'none'
+        })
+      }
+    },
+    fail: (err) => {
+      console.log('取消举报', err)
+    }
+  })
+}
+
 // 回复回复
 const handleReplyToReply = (reply, parentComment) => {
   replyTarget.value = {
     id: parentComment.id,
     nickname: reply.nickname
   }
-}
-
-// 举报评论
-const handleCommentReport = (comment) => {
-  uni.showActionSheet({
-    itemList: ['举报违规内容', '举报垃圾信息', '举报其他'],
-    success: (res) => {
-      uni.showToast({
-        title: '举报成功',
-        icon: 'success'
-      })
-    }
-  })
-}
-
-// 举报回复
-const handleReplyReport = (reply) => {
-  uni.showActionSheet({
-    itemList: ['举报违规内容', '举报垃圾信息', '举报其他'],
-    success: (res) => {
-      uni.showToast({
-        title: '举报成功',
-        icon: 'success'
-      })
-    }
-  })
 }
 
 // 取消回复
@@ -796,6 +832,78 @@ const getToggleButtonText = (comment) => {
 
 <style lang="scss" scoped>
 .page-container {
+
+  /* 举报弹窗样式 */
+  .report-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+
+    .modal-content {
+      background-color: #fff;
+      padding: 40rpx;
+      border-radius: 16rpx;
+      width: 80%;
+      max-width: 600rpx;
+
+      .modal-title {
+        font-size: 36rpx;
+        font-weight: bold;
+        margin-bottom: 30rpx;
+        text-align: center;
+      }
+
+      .reason-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20rpx;
+
+        radio {
+          transform: scale(0.8);
+          /* 调整单选框大小 */
+          margin-right: 10rpx;
+        }
+
+        text {
+          font-size: 30rpx;
+        }
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 40rpx;
+
+        button {
+          width: 45%;
+          padding: 15rpx 0;
+          border-radius: 10rpx;
+          font-size: 32rpx;
+          text-align: center;
+          border: none;
+          cursor: pointer;
+
+          &.cancel-btn {
+            background-color: #f0f0f0;
+            color: #333;
+          }
+
+          &.submit-btn {
+            background-color: #007bff;
+            color: #fff;
+          }
+        }
+      }
+    }
+  }
+
   min-height: 100vh;
   background: #fff;
 }
