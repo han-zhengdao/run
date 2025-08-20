@@ -100,6 +100,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRequest } from '@/api'
+import { toggleFollow } from '@/utils/followUtils'
 
 const statusBarHeight = ref(0)
 const postId = ref('')
@@ -173,12 +174,18 @@ const goToUserProfile = (user) => {
 }
 
 // 处理关注
-const handleFollow = (user) => {
-  user.isFollowed = !user.isFollowed
-  uni.showToast({
-    title: user.isFollowed ? '关注成功' : '已取消关注',
-    icon: 'none'
-  })
+const handleFollow = async (user) => {
+  try {
+    const result = await toggleFollow(user.id, user.isFollowed)
+    if (result && result.success) {
+      user.isFollowed = result.isFollowing
+    }
+  } catch (error) {
+    uni.showToast({
+      title: '操作失败',
+      icon: 'none'
+    })
+  }
 }
 
 // 预览图片
@@ -289,7 +296,7 @@ const submitComment = async () => {
     if (replyTo.value) {
       // 回复评论
       response = await API_COMMENT_REPLY(replyTo.value.id, commentContent.value.trim())
-      
+
       if (response.status === 0) {
         // 创建新回复对象
         const newReply = {
@@ -306,14 +313,14 @@ const submitComment = async () => {
             nickname: replyTo.value.nickname
           }
         }
-        
+
         comments.value.unshift(newReply)
         replyTo.value = null
       }
     } else {
       // 发表新评论
       response = await API_COMMENT_CREATE(postInfo.value.id, commentContent.value.trim())
-      
+
       if (response.status === 0) {
         // 创建新评论对象
         const newComment = {
@@ -327,7 +334,7 @@ const submitComment = async () => {
           isLiked: false,
           replyTo: null
         }
-        
+
         comments.value.unshift(newComment)
       }
     }

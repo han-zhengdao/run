@@ -88,3 +88,49 @@ export function formatNickname(nickname, userId) {
   }
   return nickname
 }
+
+/**
+ * 格式化时间显示
+ * @param {string|Date} time - 时间字符串或Date对象
+ * @returns {string} 格式化后的时间字符串
+ */
+export function formatTime(time) {
+  if (!time) return ''
+
+  const now = new Date()
+  const targetTime = new Date(time)
+
+  // 如果时间无效，返回原始时间
+  if (isNaN(targetTime.getTime())) {
+    return time
+  }
+
+  const diff = now.getTime() - targetTime.getTime()
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (seconds < 60) {
+    return '刚刚'
+  } else if (minutes < 60) {
+    return `${minutes}分钟前`
+  } else if (hours < 24) {
+    return `${hours}小时前`
+  } else if (days < 7) {
+    return `${days}天前`
+  } else {
+    // 超过一周显示具体日期
+    const year = targetTime.getFullYear()
+    const month = String(targetTime.getMonth() + 1).padStart(2, '0')
+    const day = String(targetTime.getDate()).padStart(2, '0')
+    const hour = String(targetTime.getHours()).padStart(2, '0')
+    const minute = String(targetTime.getMinutes()).padStart(2, '0')
+
+    if (year === now.getFullYear()) {
+      return `${month}-${day} ${hour}:${minute}`
+    } else {
+      return `${year}-${month}-${day} ${hour}:${minute}`
+    }
+  }
+}

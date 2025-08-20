@@ -97,12 +97,14 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useRequest } from '@/api'
+import { handleLikeAction } from '@/utils/likeUtils'
 import {
   formatRelativeTime,
   formatUserLevel,
   getAvatarUrl,
   formatNickname
 } from '@/utils/timeFormat'
+import { checkAuthAndRedirect } from '@/utils/auth'
 
 const { API_POST_GET_LIST, API_ARTICLE_GET_CATEGORIES, API_USER_GET_INFO } = useRequest()
 
@@ -327,6 +329,11 @@ const goToPostDetail = (item) => {
 
 // 处理点赞
 const handleLike = async (item) => {
+  // 检查是否已登录
+  if (!checkAuthAndRedirect('点赞需要先登录')) {
+    return
+  }
+
   try {
     const { API_POST_LIKE } = useRequest()
     const response = await API_POST_LIKE(item.id)
@@ -335,6 +342,15 @@ const handleLike = async (item) => {
       // 根据接口返回的状态更新UI
       item.isLiked = response.data.isLiked
       item.likes += response.data.isLiked ? 1 : -1
+
+      // 如果是当前用户的帖子被点赞，更新获赞数
+      try {
+        if (typeof handleLikeAction === 'function') {
+          handleLikeAction(response.data.isLiked, item)
+        }
+      } catch (actionError) {
+        // 静默处理错误
+      }
 
       uni.showToast({
         title: response.message,
@@ -354,6 +370,11 @@ const handleLike = async (item) => {
 
 // 跳转到发帖页面
 const goToPost = () => {
+  // 检查是否已登录
+  if (!checkAuthAndRedirect('发帖需要先登录')) {
+    return
+  }
+
   uni.navigateTo({
     url: '/pages/post/post'
   })
@@ -394,6 +415,11 @@ const toggleContent = (item) => {
 const reportedItems = ref(new Set()) // 用于存储已举报的帖子ID
 
 const handleReport = async (item) => {
+  // 检查是否已登录
+  if (!checkAuthAndRedirect('举报需要先登录')) {
+    return
+  }
+
   const reportKey = `post_${item.id}`
   if (reportedItems.value.has(reportKey)) {
     uni.showToast({
@@ -466,17 +492,20 @@ const getCategories = async () => {
 
 // 页面加载时获取分类列表和文章列表
 onMounted(async () => {
-  // 获取当前用户信息
+  // 获取分类列表（不需要登录也可访问）
+  await getCategories()
+
+  // 尝试获取当前用户信息（需要登录）
   try {
     const userRes = await API_USER_GET_INFO()
     if (userRes.status === 0 && userRes.data) {
       currentUserId.value = userRes.data.id
     }
   } catch (error) {
-    console.warn('获取用户信息失败:', error)
+    // 如果获取用户信息失败，说明可能没有登录
+    // 这里不做处理，因为首页可以在未登录状态下浏览
+    console.warn('获取用户信息失败，可能未登录:', error)
   }
-
-  await getCategories()
 
   // 确保有分类数据后再设置默认分类
   if (categories.value.length > 0) {
@@ -703,6 +732,8 @@ body,
 
         &.expanded {
           /* 展开状态不限制高度 */
+          overflow: visible;
+          -webkit-line-clamp: unset;
         }
       }
 

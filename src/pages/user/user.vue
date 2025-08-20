@@ -29,15 +29,15 @@
           </view>
           <view class="user-stats">
             <view class="stat-item" @click="goToFollow">
-              <text class="num">128</text>
+              <text class="num">{{ userInfo?.following_count || 0 }}</text>
               <text class="label">关注</text>
             </view>
             <view class="stat-item" @click="goToFans">
-              <text class="num">256</text>
+              <text class="num">{{ userInfo?.followers_count || 0 }}</text>
               <text class="label">粉丝</text>
             </view>
             <view class="stat-item" @click="goToLikes">
-              <text class="num">128</text>
+              <text class="num">{{ getLikesCount() }}</text>
               <text class="label">获赞</text>
             </view>
           </view>
@@ -87,25 +87,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRequest } from '@/api'
+import eventBus, { EVENTS } from '@/utils/eventBus'
 
 const statusBarHeight = ref(0)
 const hasNewMessage = ref(true)
 const userInfo = ref(null)
-const { API_USER_GET_INFO } = useRequest() // 获取用户信息API
+const currentLikesCount = ref(0)
+const { API_USER_GET_INFO, API_USER_LIKES_LIST } = useRequest() // 获取用户信息API
 
-onMounted(async () => {
-  // 获取状态栏高度
-  const systemInfo = uni.getSystemInfoSync()
-  statusBarHeight.value = systemInfo.statusBarHeight
-
-  // 获取用户信息
+// 获取用户信息
+const getUserInfo = async () => {
   try {
     const res = await API_USER_GET_INFO()
     // 根据后端返回格式处理数据
     if (res.status === 0) {
       userInfo.value = res.data || {}
+
+      // 如果用户信息中没有获赞数，尝试从其他接口获取
+      if (!userInfo.value.likes_count && !userInfo.value.likeCount) {
+        try {
+          const likesCount = await forceSyncLikesCount()
+          if (likesCount > 0) {
+            userInfo.value.likes_count = likesCount
+          }
+        } catch (syncError) {
+          // 静默处理错误
+        }
+      }
     } else {
       uni.showToast({
         title: res.message || '获取用户信息失败',
@@ -118,6 +128,115 @@ onMounted(async () => {
       icon: 'none'
     })
   }
+}
+
+// 监听关注数变化
+const handleFollowChanged = (data) => {
+  if (userInfo.value) {
+    // 根据事件类型更新关注数
+    if (data.type === 'follow') {
+      userInfo.value.following_count = (userInfo.value.following_count || 0) + 1
+    } else if (data.type === 'unfollow') {
+      userInfo.value.following_count = Math.max(0, (userInfo.value.following_count || 0) - 1)
+    }
+  }
+}
+
+// 监听用户信息更新事件
+const handleUserInfoUpdated = () => {
+  getUserInfo()
+}
+
+// 获取获赞数显示值
+const getLikesCount = () => {
+  const fromUserInfo =
+    userInfo.value?.likes_count || userInfo.value?.likeCount || userInfo.value?.total || 0
+  const fromCurrent = currentLikesCount.value || 0
+  return Math.max(fromUserInfo, fromCurrent)
+}
+
+// 强制同步获赞数
+const forceSyncLikesCount = async () => {
+  try {
+    const response = await API_USER_LIKES_LIST({ pageNum: 1, pageSize: 1 })
+
+    if (response.status === 0 && response.data) {
+      const total = response.data.total || 0
+      currentLikesCount.value = total
+
+      // 同时更新userInfo
+      if (userInfo.value) {
+        userInfo.value.likes_count = total
+      }
+
+      return total
+    }
+  } catch (error) {
+    return 0
+  }
+}
+
+// 监听获赞数变化事件
+const handleLikesCountChanged = (data) => {
+  // 根据事件类型更新获赞数
+  if (data.type === 'increment') {
+    currentLikesCount.value = (currentLikesCount.value || 0) + (data.count || 1)
+  } else if (data.type === 'decrement') {
+    currentLikesCount.value = Math.max(0, (currentLikesCount.value || 0) - (data.count || 1))
+  } else if (data.type === 'set') {
+    currentLikesCount.value = data.count || 0
+  }
+
+  // 同时更新userInfo
+  if (userInfo.value) {
+    userInfo.value.likes_count = currentLikesCount.value
+  }
+}
+
+onMounted(async () => {
+  // 获取状态栏高度
+  const systemInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = systemInfo.statusBarHeight
+
+  // 获取用户信息
+  await getUserInfo()
+
+  // 监听关注数变化事件
+  eventBus.on(EVENTS.USER_FOLLOW_CHANGED, handleFollowChanged)
+
+  // 监听用户信息更新事件
+  eventBus.on(EVENTS.USER_INFO_UPDATED, handleUserInfoUpdated)
+
+  // 监听获赞数变化事件
+  eventBus.on(EVENTS.USER_LIKES_COUNT_CHANGED, handleLikesCountChanged)
+
+  // 强制同步获赞数
+  setTimeout(async () => {
+    try {
+      await forceSyncLikesCount()
+    } catch (error) {
+      // 静默处理错误
+    }
+  }, 1000)
+})
+
+// 页面显示时刷新用户信息
+onShow(async () => {
+  await getUserInfo()
+
+  // 同步获赞数
+  try {
+    await forceSyncLikesCount()
+  } catch (error) {
+    // 静默处理错误
+  }
+})
+
+onUnmounted(() => {
+  // 清理事件监听
+  eventBus.off(EVENTS.USER_FOLLOW_CHANGED, handleFollowChanged)
+  eventBus.off(EVENTS.USER_INFO_UPDATED, handleUserInfoUpdated)
+  eventBus.off(EVENTS.USER_LIKES_COUNT_CHANGED, handleLikesCountChanged)
 })
 
 const goToFollow = () => {
@@ -132,7 +251,9 @@ const goToFans = () => {
   })
 }
 
-const goToLikes = () => {
+const goToLikes = async () => {
+  await forceSyncLikesCount()
+
   uni.navigateTo({
     url: '/pages/userPackage/likes'
   })

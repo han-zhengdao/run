@@ -174,5 +174,48 @@ export default {
    */
   API_USER_FOLLOW_STATUS(userId) {
     return request.get('/my/interaction/follow-status', { userId })
+  },
+
+  /**
+   * 获取我的文章列表
+   * @param {Object} params - 请求参数
+   * @param {number} [params.pageNum=1] - 页码，从1开始
+   * @param {number} [params.pageSize=10] - 每页数量，最大50
+   * @param {string} [params.state] - 文章状态筛选：'已发布' 或 '草稿'
+   * @returns {Promise} 返回包含文章列表、分页信息的响应
+   */
+  API_MY_ARTICLES_GET_LIST(params = {}) {
+    return request.get('/my/article/my', params)
+  },
+
+  /**
+   * 获取文章详情（用于编辑）
+   * @param {number} articleId - 文章ID
+   * @returns {Promise} 返回文章详情数据
+   */
+  API_MY_ARTICLE_GET_DETAIL(articleId) {
+    return request.get(`/my/article/edit/${articleId}`)
+  },
+
+  /**
+   * 修改文章
+   * @param {number} articleId - 文章ID
+   * @param {Object} articleData - 文章数据
+   * @param {string} articleData.content - 文章内容（1-10000字符）
+   * @param {number} articleData.category_id - 分类ID
+   * @param {string} articleData.state - 文章状态：'已发布' 或 '草稿'
+   * @returns {Promise} 返回操作结果
+   */
+  API_MY_ARTICLE_UPDATE(articleId, articleData) {
+    return request.put(`/my/article/${articleId}`, articleData)
+  },
+
+  /**
+   * 删除文章
+   * @param {number} articleId - 文章ID
+   * @returns {Promise} 返回操作结果
+   */
+  API_MY_ARTICLE_DELETE(articleId) {
+    return request.delete(`/my/article/${articleId}`)
   }
 }

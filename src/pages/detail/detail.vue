@@ -170,6 +170,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRequest } from '@/api'
+import { handleLikeAction } from '@/utils/likeUtils'
 import {
   formatRelativeTime,
   formatUserLevel,
@@ -401,6 +402,15 @@ const handleLike = async (post) => {
       // 根据接口返回的状态更新UI
       post.isLiked = response.data.isLiked
       post.likes += response.data.isLiked ? 1 : -1
+
+      // 如果是当前用户的帖子被点赞，更新获赞数
+      try {
+        if (typeof handleLikeAction === 'function') {
+          handleLikeAction(response.data.isLiked, post)
+        }
+      } catch (actionError) {
+        // 静默处理错误
+      }
 
       uni.showToast({
         title: response.message,

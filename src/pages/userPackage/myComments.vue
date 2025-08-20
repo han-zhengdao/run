@@ -3,154 +3,299 @@
     <!-- 背景图 -->
     <image class="bg-image" src="/static/userbg.png" mode="aspectFill"></image>
 
-    <!-- 自定义导航栏 -->
-    <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="nav-left" @click="goBack">
+    <!-- 页面标题 -->
+    <view class="page-header">
+      <view class="header-left" @click="goBack">
         <text class="i-carbon-arrow-left text-36rpx text-white"></text>
       </view>
-      <view class="nav-title">我的评论</view>
+      <text class="page-title">我的评论</text>
     </view>
 
     <!-- 滚动区域 -->
-    <scroll-view class="scroll-container" scroll-y @scrolltolower="loadMore">
+    <scroll-view class="scroll-container" scroll-y @scrolltolower="loadMore" refresher-enabled
+      @refresherrefresh="onRefresh" :refresher-triggered="refreshing">
       <view class="comments-container">
         <view class="comments-list">
-          <view class="comment-item" v-for="(item, index) in commentsList" :key="index">
-            <!-- 帖子信息 -->
-            <view class="post-info" @click="goToPost(item.postId)">
-              <view class="post-content">{{ item.postContent }}</view>
-              <text class="i-carbon-chevron-right text-24rpx"></text>
-            </view>
-            <!-- 评论信息 -->
-            <view class="comment-content">
-              <view class="comment-header">
-                <image class="avatar" :src="item.avatar" mode="aspectFill" />
-                <view class="user-info">
-                  <view class="nickname">{{ item.nickname }}</view>
-                  <view class="comment-time">{{ item.time }}</view>
+          <!-- 评论记录 -->
+          <view class="comment-item" v-for="item in commentList" :key="item.target.id">
+            <!-- 我的信息 -->
+            <view class="my-info">
+              <image class="avatar" :src="myUserInfo.avatar || '/static/logo.jpg'" mode="aspectFill"
+                @error="handleAvatarError" />
+              <view class="user-info">
+                <view class="nickname">{{ myUserInfo.nickname }}</view>
+                <view class="meta-info">
+                  <text class="level">{{ myUserInfo.levelName }}</text>
+                  <text class="dot">·</text>
+                  <text class="comment-time">{{ formatTime(item.target.createdAt) }}</text>
                 </view>
               </view>
-              <view class="comment-text">{{ item.content }}</view>
-              <view class="comment-actions">
-                <view class="action-item" @click="handleLike(item)">
-                  <text :class="['i-carbon-favorite text-32rpx mr-2', item.isLiked ? 'liked' : '']" />
-                  <text>{{ item.likeCount }}</text>
+              <view class="comment-badge">
+                <text class="comment-icon">💬</text>
+                <text class="comment-text">评论了</text>
+              </view>
+            </view>
+
+            <!-- 帖子信息 -->
+            <view class="post-context" @click="goToPost(item.post.id)">
+              <view class="post-content">{{ item.post.content }}</view>
+              <view class="post-images" v-if="item.post.imageUrls && item.post.imageUrls.length">
+                <image v-for="(img, imgIndex) in item.post.imageUrls" :key="imgIndex" :src="img" mode="aspectFill"
+                  @click.stop="previewImage(item.post.imageUrls, imgIndex)" />
+              </view>
+              <view class="post-stats">
+                <text class="stat-item">{{ item.post.likeCount }} 赞</text>
+                <text class="stat-item">{{ item.post.commentCount }} 评论</text>
+                <text class="stat-item">{{ item.post.viewCount }} 浏览</text>
+                <text class="stat-item">{{ item.post.categoryName }}</text>
+              </view>
+            </view>
+
+            <!-- 我的评论内容 -->
+            <view class="my-comment">
+              <view class="comment-content">{{ item.target.content }}</view>
+              <view class="comment-stats">
+                <text class="stat-item">{{ item.target.likeCount }} 赞</text>
+                <text class="stat-item">{{ item.target.replyCount }} 回复</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 回复记录 -->
+          <view class="comment-item reply-item" v-for="item in replyList" :key="item.target.id">
+            <!-- 我的信息 -->
+            <view class="my-info">
+              <image class="avatar" :src="myUserInfo.avatar || '/static/logo.jpg'" mode="aspectFill"
+                @error="handleAvatarError" />
+              <view class="user-info">
+                <view class="nickname">{{ myUserInfo.nickname }}</view>
+                <view class="meta-info">
+                  <text class="level">{{ myUserInfo.levelName }}</text>
+                  <text class="dot">·</text>
+                  <text class="comment-time">{{ formatTime(item.target.createdAt) }}</text>
                 </view>
-                <view class="action-item" @click="handleReply(item)">
-                  <text class="i-carbon-chat text-32rpx mr-2" />
-                  <text>回复</text>
-                </view>
+              </view>
+              <view class="comment-badge">
+                <text class="comment-icon">↩️</text>
+                <text class="comment-text">回复了</text>
+              </view>
+            </view>
+
+            <!-- 帖子信息 -->
+            <view class="post-context" @click="goToPost(item.post.id)">
+              <view class="post-content">{{ item.post.content }}</view>
+              <view class="post-images" v-if="item.post.imageUrls && item.post.imageUrls.length">
+                <image v-for="(img, imgIndex) in item.post.imageUrls" :key="imgIndex" :src="img" mode="aspectFill"
+                  @click.stop="previewImage(item.post.imageUrls, imgIndex)" />
+              </view>
+              <view class="post-stats">
+                <text class="stat-item">{{ item.post.likeCount }} 赞</text>
+                <text class="stat-item">{{ item.post.commentCount }} 评论</text>
+                <text class="stat-item">{{ item.post.viewCount }} 浏览</text>
+                <text class="stat-item">{{ item.post.categoryName }}</text>
+              </view>
+            </view>
+
+            <!-- 被回复的评论 -->
+            <view class="reply-context">
+              <view class="reply-content">{{ item.comment.content }}</view>
+              <view class="reply-stats">
+                <text class="stat-item">{{ item.comment.likeCount }} 赞</text>
+                <text class="stat-item">{{ item.comment.replyCount }} 回复</text>
+              </view>
+            </view>
+
+            <!-- 我的回复内容 -->
+            <view class="my-comment">
+              <view class="comment-content">{{ item.target.content }}</view>
+              <view class="comment-stats">
+                <text class="stat-item">{{ item.target.likeCount }} 赞</text>
               </view>
             </view>
           </view>
         </view>
+
+        <!-- 空状态 -->
+        <view class="empty-state" v-if="!isLoading && commentsList.length === 0">
+          <text class="empty-icon">💬</text>
+          <text class="empty-text">还没有评论记录</text>
+          <text class="empty-desc">去发表你的第一条评论吧</text>
+        </view>
+
+        <!-- 加载状态 -->
         <view class="loading" v-if="isLoading">加载中...</view>
-        <view class="no-more" v-if="noMore">没有更多了</view>
+        <view class="no-more" v-if="noMore && commentsList.length > 0">没有更多了</view>
       </view>
     </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRequest } from '@/api'
+import { formatTime } from '@/utils/timeFormat'
 
-const statusBarHeight = ref(0)
+const { API_MY_COMMENTS_LIST, API_USER_GET_INFO } = useRequest()
+
 const isLoading = ref(false)
+const refreshing = ref(false)
 const noMore = ref(false)
-const commentsList = ref([
-  {
-    id: 101,
-    postId: 1,
-    postContent: '今天天气真好，出去走走~ #生活 #日常',
-    avatar: '/static/logo.jpg',
-    nickname: '我',
-    time: '2024-03-20 14:30',
-    content: '天气确实不错，我也准备出去走走',
-    likeCount: 5,
-    isLiked: false
-  },
-  {
-    id: 102,
-    postId: 2,
-    postContent: '分享一个超好吃的餐厅，强烈推荐！ #美食 #探店',
-    avatar: '/static/logo.jpg',
-    nickname: '我',
-    time: '2024-03-19 16:45',
-    content: '这家店我也去过，确实很好吃！',
-    likeCount: 3,
-    isLiked: true
-  },
-  {
-    id: 103,
-    postId: 3,
-    postContent: '新买的相机到了，拍几张试试效果 #摄影 #器材',
-    avatar: '/static/logo.jpg',
-    nickname: '我',
-    time: '2024-03-18 10:20',
-    content: '拍得真不错，构图很好！',
-    likeCount: 8,
-    isLiked: false
-  }
-])
-
-onMounted(() => {
-  const systemInfo = uni.getSystemInfoSync()
-  statusBarHeight.value = systemInfo.statusBarHeight
+const currentPage = ref(1)
+const pageSize = ref(10)
+const commentsList = ref([])
+const total = ref(0)
+const myUserInfo = ref({
+  avatar: '/static/logo.jpg',
+  nickname: '我',
+  levelName: 'Lv.1'
 })
+
+// 计算属性：按类型过滤评论记录
+const commentList = computed(() => {
+  return commentsList.value.filter((item) => item.type === 'comment')
+})
+
+const replyList = computed(() => {
+  return commentsList.value.filter((item) => item.type === 'reply')
+})
+
+// 获取我的用户信息
+const getMyUserInfo = async () => {
+  try {
+    const response = await API_USER_GET_INFO()
+    if (response.status === 0 && response.data) {
+      myUserInfo.value = {
+        avatar: response.data.avatar || '/static/logo.jpg',
+        nickname: response.data.nickname || '我',
+        levelName: response.data.levelName || 'Lv.1'
+      }
+    }
+  } catch (error) {
+    // 静默处理错误，使用默认值
+  }
+}
+
+// 处理图片URL，将相对路径转换为绝对路径
+const processImageUrls = (imageUrls) => {
+  if (!imageUrls || !Array.isArray(imageUrls)) return []
+
+  return imageUrls.map((url) => {
+    if (url && url.startsWith('/')) {
+      return `${import.meta.env.VITE_APP_API_BASEURL}${url}`
+    }
+    return url
+  })
+}
+
+// 获取评论列表
+const getCommentsList = async (isRefresh = false) => {
+  try {
+    if (isRefresh) {
+      currentPage.value = 1
+      noMore.value = false
+    }
+
+    if (noMore.value || isLoading.value) return
+
+    isLoading.value = true
+    const response = await API_MY_COMMENTS_LIST({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    })
+
+    if (response.status === 0 && response.data) {
+      const newList = response.data.list || []
+      total.value = response.data.total || 0
+
+      // 处理图片URL和头像URL
+      const processedList = newList.map((item) => {
+        // 处理帖子图片
+        if (item.post && item.post.imageUrls) {
+          item.post.imageUrls = processImageUrls(item.post.imageUrls)
+        }
+        // 处理作者头像
+        if (item.author && item.author.avatar) {
+          item.author.avatar = processImageUrls([item.author.avatar])[0]
+        }
+        return item
+      })
+
+      if (isRefresh) {
+        commentsList.value = processedList
+      } else {
+        commentsList.value.push(...processedList)
+      }
+
+      // 判断是否还有更多数据
+      if (newList.length < pageSize.value) {
+        noMore.value = true
+      } else {
+        currentPage.value++
+      }
+    } else {
+      uni.showToast({
+        title: response.message || '获取评论列表失败',
+        icon: 'none'
+      })
+    }
+  } catch (error) {
+    uni.showToast({
+      title: '获取评论列表失败',
+      icon: 'none'
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 下拉刷新
+const onRefresh = async () => {
+  refreshing.value = true
+  await getCommentsList(true)
+  refreshing.value = false
+}
+
+// 加载更多
+const loadMore = () => {
+  if (isLoading.value || noMore.value) return
+  getCommentsList()
+}
+
+// 跳转到用户页面
+const goToUser = (userId) => {
+  uni.navigateTo({
+    url: `/pages/userPackage/userProfile?userId=${userId}`
+  })
+}
+
+// 跳转到帖子详情
+const goToPost = (postId) => {
+  uni.navigateTo({
+    url: `/pages/detail/detail?id=${postId}`
+  })
+}
+
+// 处理头像加载错误
+const handleAvatarError = () => {
+  myUserInfo.value.avatar = '/static/logo.jpg'
+}
+
+// 预览图片
+const previewImage = (images, current) => {
+  uni.previewImage({
+    urls: images,
+    current: images[current]
+  })
+}
 
 const goBack = () => {
   uni.navigateBack()
 }
 
-const goToPost = (postId) => {
-  uni.navigateTo({
-    url: `/pages/post/detail?id=${postId}`
-  })
-}
-
-const handleLike = async (item) => {
-  try {
-    const { API_COMMENT_LIKE } = useRequest()
-    const response = await API_COMMENT_LIKE(item.id)
-
-    if (response.status === 0) {
-      // 根据接口返回的状态更新UI
-      item.isLiked = response.data.isLiked
-      item.likeCount += response.data.isLiked ? 1 : -1
-
-      uni.showToast({
-        title: response.message,
-        icon: 'none'
-      })
-    } else {
-      throw new Error(response.message)
-    }
-  } catch (error) {
-    console.error('点赞评论失败:', error)
-    uni.showToast({
-      title: '操作失败：' + error.message,
-      icon: 'none'
-    })
-  }
-}
-
-const handleReply = (item) => {
-  uni.navigateTo({
-    url: `/pages/post/detail?id=${item.postId}&focus=comment`
-  })
-}
-
-const loadMore = () => {
-  if (isLoading.value || noMore.value) return
-  isLoading.value = true
-
-  // 模拟加载更多数据
-  setTimeout(() => {
-    noMore.value = true
-    isLoading.value = false
-  }, 1000)
-}
+onMounted(() => {
+  getMyUserInfo()
+  getCommentsList(true)
+})
 </script>
 
 <style lang="scss">
@@ -165,50 +310,44 @@ const loadMore = () => {
   top: 0;
   left: 0;
   width: 100%;
-  height: 400rpx;
+  height: 300rpx;
   z-index: 0;
 }
 
-.scroll-container {
+.page-header {
   position: relative;
   z-index: 1;
-  height: 100vh;
-}
-
-.comments-container {
-  padding: 0;
-  padding-top: 288rpx;
-  padding-bottom: 100rpx;
-}
-
-.custom-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  height: 88rpx;
+  padding: 120rpx 24rpx 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 
-  .nav-left {
+  .header-left {
     position: absolute;
     left: 24rpx;
     padding: 20rpx;
   }
 
-  .nav-title {
+  .page-title {
     color: #fff;
     font-size: 36rpx;
     font-weight: 500;
   }
 }
 
+.scroll-container {
+  position: relative;
+  z-index: 1;
+  height: calc(100vh - 200rpx);
+}
+
+.comments-container {
+  padding: 0 24rpx 100rpx;
+}
+
 .comments-list {
   background: #fff;
   border-radius: 20rpx;
-  margin: 24rpx;
   overflow: hidden;
 
   .comment-item {
@@ -219,77 +358,199 @@ const loadMore = () => {
       border-bottom: none;
     }
 
-    .post-info {
+    .my-info {
       display: flex;
-      align-items: center;
-      padding: 16rpx;
-      background: #f8f8f8;
-      border-radius: 8rpx;
-      margin-bottom: 16rpx;
-      cursor: pointer;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24rpx;
 
-      .post-content {
-        flex: 1;
-        font-size: 26rpx;
-        color: #666;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      .avatar {
+        width: 72rpx;
+        height: 72rpx;
+        border-radius: 50%;
         margin-right: 16rpx;
+        flex-shrink: 0;
+        border: 2rpx solid #f0f0f0;
       }
-    }
 
-    .comment-content {
-      .comment-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 16rpx;
+      .user-info {
+        flex: 1;
+        min-width: 0;
 
-        .avatar {
-          width: 64rpx;
-          height: 64rpx;
-          border-radius: 50%;
-          margin-right: 16rpx;
+        .nickname {
+          font-size: 30rpx;
+          color: #1a1a1a;
+          font-weight: 600;
+          margin-bottom: 6rpx;
+          line-height: 1.4;
         }
 
-        .user-info {
-          .nickname {
-            font-size: 28rpx;
-            color: #333;
-            margin-bottom: 4rpx;
+        .meta-info {
+          display: flex;
+          align-items: center;
+          font-size: 24rpx;
+          color: #8590a6;
+
+          .level {
+            color: #8590a6;
+          }
+
+          .dot {
+            margin: 0 8rpx;
+            color: #8590a6;
           }
 
           .comment-time {
-            font-size: 24rpx;
-            color: #999;
+            color: #8590a6;
           }
         }
       }
 
-      .comment-text {
-        font-size: 28rpx;
-        color: #333;
-        line-height: 1.6;
-        margin-bottom: 16rpx;
-      }
-
-      .comment-actions {
+      .comment-badge {
         display: flex;
-        gap: 40rpx;
         align-items: center;
+        background: #f6f6f6;
+        border-radius: 20rpx;
+        padding: 8rpx 16rpx;
+        margin-left: 16rpx;
 
-        .action-item {
-          display: flex;
-          align-items: center;
-          font-size: 26rpx;
-          color: #888;
+        .comment-icon {
+          font-size: 24rpx;
+          margin-right: 6rpx;
+        }
 
-          .liked {
-            color: #1da1f2;
-          }
+        .comment-text {
+          font-size: 24rpx;
+          color: #8590a6;
+          font-weight: 500;
         }
       }
     }
+
+    .my-comment {
+      background: #f8f9fa;
+      border-radius: 12rpx;
+      padding: 16rpx;
+      margin-bottom: 16rpx;
+
+      .comment-content {
+        font-size: 28rpx;
+        color: #333;
+        line-height: 1.6;
+        margin-bottom: 12rpx;
+      }
+
+      .comment-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16rpx;
+
+        .stat-item {
+          font-size: 22rpx;
+          color: #666;
+          background: #fff;
+          padding: 4rpx 12rpx;
+          border-radius: 12rpx;
+        }
+      }
+    }
+
+    .post-context {
+      background: #fff;
+      border: 1rpx solid #e9ecef;
+      border-radius: 12rpx;
+      padding: 16rpx;
+      margin-bottom: 16rpx;
+
+      .post-content {
+        font-size: 26rpx;
+        color: #333;
+        line-height: 1.5;
+        margin-bottom: 12rpx;
+      }
+
+      .post-images {
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: 12rpx;
+        gap: 8rpx;
+
+        image {
+          width: 180rpx;
+          height: 180rpx;
+          border-radius: 8rpx;
+          object-fit: cover;
+        }
+      }
+
+      .post-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16rpx;
+        margin-top: 12rpx;
+
+        .stat-item {
+          font-size: 22rpx;
+          color: #666;
+          background: #f8f9fa;
+          padding: 4rpx 12rpx;
+          border-radius: 12rpx;
+        }
+      }
+    }
+
+    .reply-context {
+      background: #fff;
+      border: 1rpx solid #e9ecef;
+      border-radius: 8rpx;
+      padding: 12rpx;
+      margin-bottom: 12rpx;
+
+      .reply-content {
+        font-size: 24rpx;
+        color: #333;
+        line-height: 1.5;
+        margin-bottom: 8rpx;
+      }
+
+      .reply-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12rpx;
+
+        .stat-item {
+          font-size: 20rpx;
+          color: #666;
+          background: #f8f9fa;
+          padding: 4rpx 8rpx;
+          border-radius: 8rpx;
+        }
+      }
+    }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 120rpx 24rpx;
+
+  .empty-icon {
+    font-size: 80rpx;
+    margin-bottom: 24rpx;
+    display: block;
+  }
+
+  .empty-text {
+    font-size: 32rpx;
+    color: #333;
+    margin-bottom: 12rpx;
+    display: block;
+  }
+
+  .empty-desc {
+    font-size: 26rpx;
+    color: #999;
+    display: block;
   }
 }
 
