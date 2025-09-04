@@ -31,42 +31,6 @@
         "navigationStyle": "custom",
         "navigationBarTextStyle": "white"
       }
-    },
-    {
-      "path": "pages/post/post",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/login/login",
-      "type": "page",
-      "style": {
-        "navigationBarTitleText": "登录",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/webview/webview",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "网页浏览"
-      }
-    },
-    {
-      "path": "pages/detail/detail",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/test/followStatus",
-      "style": {
-        "navigationBarTitleText": "关注状态测试",
-        "navigationStyle": "default"
-      }
     }
   ],
   "tabBar": {
@@ -102,6 +66,66 @@
     }
   },
   "subPackages": [
+    {
+      "root": "pages/detail",
+      "pages": [
+        {
+          "path": "detail",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/post",
+      "pages": [
+        {
+          "path": "post",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/login",
+      "pages": [
+        {
+          "path": "login",
+          "style": {
+            "navigationBarTitleText": "登录",
+            "navigationStyle": "custom"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/webview",
+      "pages": [
+        {
+          "path": "webview",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "网页浏览"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/test",
+      "pages": [
+        {
+          "path": "followStatus",
+          "style": {
+            "navigationBarTitleText": "关注状态测试",
+            "navigationStyle": "default"
+          }
+        }
+      ]
+    },
     {
       "root": "pages/userPackage",
       "pages": [
